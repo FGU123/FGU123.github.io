@@ -149,6 +149,7 @@
   <article class="post-article">
     <section class="markdown-content"><p>&emsp;&emsp;Java线程池的设计与公司经营的相似之处如果我们查看JDK源码，会发现FixedThreadPool、CachedThreadPool和SingleThreadExecutor都是通过创建一个ThreadPoolExcutor对象来实现的。我们来看一下该ThreadPoolExcutor的构造方法，并对线程池中线程的保留和新建策略做进一步的分析。</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ThreadPoolExecutor</span><span class="params">( <span class="keyword">int</span> corePoolSize, <span class="keyword">int</span> maximumPoolSize, <span class="keyword">long</span> keepAliveTime, TimeUnit unit, BlockingQueue&lt;Runnable&gt; workQueue)</span></span></span><br></pre></td></tr></table></figure>
+<p><img src="/images/Java-ThreadPool-vs-Company/20181021193154.jpg" alt="ThreadPoolExecutor执行示意图"></p>
 <p>&emsp;&emsp;第一个参数corePoolSize代表了线程池中一定要保持的线程的数量；线程池中的线程可能发生变化，第二个参数maximumPoolSize约束了线程池中所能达到的线程的最大数量；线程有可能一直处于空闲状态，keepAliveTime代表了空闲状态的线程所能存活的时间；TimeUnit代表了时间单位；workQueue是一个缓冲队列，如果任务到达，但是还没有空闲线程可以执行该任务，那么就将该任务置于这个缓冲队列中。为了更加容易理解和记忆线程池这个几个属性的协调工作。我们利用一个精明的老板来比喻线程池。而将线程比作线程中的线程。</p>
 <p>&emsp;&emsp;一个公司必须要保留一定数量的核心员工，不管这些员工是不是老闲着。当然，对于非常抠门的老板，这个数量可能是0，例如CachedThreadPool。核心员工的数量，就是corePoolSize。当一个公司初创时，所有的员工也就是那几个核心员工。当线程池新建时，同样只会创建与corePoolSize数量相当的线程。</p>
 <p>&emsp;&emsp;当新的任务到达时，如果有空闲线程，马上将这些任务分配给空闲线程。如果没有的话，那么，怎么办呢？新建一个线程吗？非也，对于一个精明的老板来说，他只会把这些任务排进任务列表。手下的员工忙完手头的工作，马上就从任务列表的开头位置移出工作，并分配给空闲。这就让每名员工都不停的工作，甚至加班加点。这个任务列表就是workQueue。</p>
@@ -167,6 +168,10 @@
     <span class="tag-code">线程池</span>
   </a>
 
+  <a href="/tags#线程" >
+    <span class="tag-code">线程</span>
+  </a>
+
   <a href="/tags#ThreadPool" >
     <span class="tag-code">ThreadPool</span>
   </a>
@@ -183,6 +188,10 @@
     <span class="tag-code">并发</span>
   </a>
 
+  <a href="/tags#Java" >
+    <span class="tag-code">Java</span>
+  </a>
+
       </div>
     
     <!-- Tags END -->
@@ -191,10 +200,10 @@
   <div class="nav-container">
     <!-- reverse left and right to put prev and next in a more logic postition -->
     
-      <a class="nav-left" href="/2018/10/03/Hexo-First-Guide/">
+      <a class="nav-left" href="/2018/10/03/Java-ThreadPool-vs-Company/">
         <span class="nav-arrow">← </span>
         
-          Hexo Hello World
+          Java线程池类比公司经营之道
         
       </a>
     

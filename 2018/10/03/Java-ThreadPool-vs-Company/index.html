@@ -10,7 +10,7 @@
   
   <title>
     
-      Hexo Hello World | PPXu
+      Java线程池类比公司经营之道 | PPXu
     
   </title>
   <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -138,7 +138,7 @@
 </header>
 
     <div id="article-banner">
-  <h2>Hexo Hello World</h2>
+  <h2>Java线程池类比公司经营之道</h2>
   <p class="post-date">2018-10-03</p>
   <div class="arrow-down">
     <a href="javascript:;"></a>
@@ -147,23 +147,48 @@
 <main class="app-body flex-box">
   <!-- Article START -->
   <article class="post-article">
-    <section class="markdown-content"><p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>
+    <section class="markdown-content"><p>&emsp;&emsp;Java线程池的设计与公司经营的相似之处如果我们查看JDK源码，会发现FixedThreadPool、CachedThreadPool和SingleThreadExecutor都是通过创建一个ThreadPoolExcutor对象来实现的。我们来看一下该ThreadPoolExcutor的构造方法，并对线程池中线程的保留和新建策略做进一步的分析。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ThreadPoolExecutor</span><span class="params">( <span class="keyword">int</span> corePoolSize, <span class="keyword">int</span> maximumPoolSize, <span class="keyword">long</span> keepAliveTime, TimeUnit unit, BlockingQueue&lt;Runnable&gt; workQueue)</span></span></span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;第一个参数corePoolSize代表了线程池中一定要保持的线程的数量；线程池中的线程可能发生变化，第二个参数maximumPoolSize约束了线程池中所能达到的线程的最大数量；线程有可能一直处于空闲状态，keepAliveTime代表了空闲状态的线程所能存活的时间；TimeUnit代表了时间单位；workQueue是一个缓冲队列，如果任务到达，但是还没有空闲线程可以执行该任务，那么就将该任务置于这个缓冲队列中。为了更加容易理解和记忆线程池这个几个属性的协调工作。我们利用一个精明的老板来比喻线程池。而将线程比作线程中的线程。</p>
+<p>&emsp;&emsp;一个公司必须要保留一定数量的核心员工，不管这些员工是不是老闲着。当然，对于非常抠门的老板，这个数量可能是0，例如CachedThreadPool。核心员工的数量，就是corePoolSize。当一个公司初创时，所有的员工也就是那几个核心员工。当线程池新建时，同样只会创建与corePoolSize数量相当的线程。</p>
+<p>&emsp;&emsp;当新的任务到达时，如果有空闲线程，马上将这些任务分配给空闲线程。如果没有的话，那么，怎么办呢？新建一个线程吗？非也，对于一个精明的老板来说，他只会把这些任务排进任务列表。手下的员工忙完手头的工作，马上就从任务列表的开头位置移出工作，并分配给空闲。这就让每名员工都不停的工作，甚至加班加点。这个任务列表就是workQueue。</p>
+<p>&emsp;&emsp;如果更多的任务涌过来，如同这个公司的业务很好，工作多越堆越多。这个时候，就看任务列表能承受的极限了。有的老板在创立公司的时候，就抱着这种心态——任务列表可以无限长，反正我就招这么多人，客户能等就等，不能等就拉倒。但是，对于很多客户来说，如果等的时间过长，可能就放弃了。具有无限长workQueue的线程池来说，可能同样会导致某些线程等待时间过长，用户任务无响应的问题。</p>
+<p>&emsp;&emsp;但是，如果workQueue不是无限长，那么，其容量总有可能被达到。而新的任务到达时，无法存入workQueue。这如同，这个老板既负责任（不想出现客户无限等待的情况），同时又不想放弃任何一个客户。那么，唯有增加员工数量了，这就如同线程池新建线程。但是，公司总要有个风险评估，不能让员工数量无限增长，于是，maximumPoolSize就代表了员工的最大数量。如同说，在无法两全其美的情形下，即使损失部分客户，也要控制公司的成本风险。线程池同样如此，每个线程都将消耗系统资源，这种消耗必须被控制在一定范围之内。</p>
+<p>&emsp;&emsp;在大量任务涌入，workQueue无法缓存这些任务，而maxinumPoolSize也已经达到时，相当于一个公司达到了它的最大营运能力，就只能拒绝介绍客户任务了。线程池拒绝介绍新的任务，会抛出异常RejectedExecutionException。</p>
+<p>&emsp;&emsp;当然，一个公司的营运既有旺季，也有淡季。上面我们所描述的情形是旺季的营运。如果淡季到了，许多员工都闲下来了。老板就会考虑裁员了。当然，老板不会马上动手，因为不能准确把握旺季和淡季的分界线。他会给空闲员工一个缓冲期，如果这个员工闲了三个月都没工作，那么证明，真的需要裁掉他了。对应到线程池中，keepAliveTime和TimeUnit限制了一个线程的最大空闲时间。相当于一个缓冲期，缓冲期一结束，就会将其销毁，以释放系统资源。当然，这些被“处理”的线程都是核心员工数量之外的，线程池总会保留corePoolSize个线程备用。</p>
+<p>&emsp;&emsp;通过以上描述，我们应该对线程池的运作策略有了一个比较清晰的认识。总结这种策略，主要目的是基于成本考虑——尽量耗用最少的内存，来完成尽可能多的任务。</p>
 </section>
     <!-- Tags START -->
     
       <div class="tags">
         <span>Tags:</span>
         
-  <a href="/tags#HEXO" >
-    <span class="tag-code">HEXO</span>
+  <a href="/tags#线程池" >
+    <span class="tag-code">线程池</span>
+  </a>
+
+  <a href="/tags#线程" >
+    <span class="tag-code">线程</span>
+  </a>
+
+  <a href="/tags#ThreadPool" >
+    <span class="tag-code">ThreadPool</span>
+  </a>
+
+  <a href="/tags#corePoolSize" >
+    <span class="tag-code">corePoolSize</span>
+  </a>
+
+  <a href="/tags#workQueue" >
+    <span class="tag-code">workQueue</span>
+  </a>
+
+  <a href="/tags#并发" >
+    <span class="tag-code">并发</span>
+  </a>
+
+  <a href="/tags#Java" >
+    <span class="tag-code">Java</span>
   </a>
 
       </div>
@@ -174,8 +199,15 @@
   <div class="nav-container">
     <!-- reverse left and right to put prev and next in a more logic postition -->
     
+      <a class="nav-left" href="/2018/10/03/Hexo-First-Guide/">
+        <span class="nav-arrow">← </span>
+        
+          Hexo Hello World
+        
+      </a>
     
-      <a class="nav-right" href="/2018/10/03/Java-ThreadPool-vs-Company/">
+    
+      <a class="nav-right" href="/2018/10/03/Java-ThreadPool-Analogy-Company/">
         
           Java线程池类比公司经营之道
         
@@ -224,7 +256,7 @@
   <div class="toc-main">
     <strong class="toc-title">Catalog</strong>
     
-      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Quick-Start"><span class="toc-nav-text">Quick Start</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Create-a-new-post"><span class="toc-nav-text">Create a new post</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Run-server"><span class="toc-nav-text">Run server</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Generate-static-files"><span class="toc-nav-text">Generate static files</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#Deploy-to-remote-sites"><span class="toc-nav-text">Deploy to remote sites</span></a></li></ol></li></ol>
+      <ol class="nav">none</ol>
     
   </div>
 </aside>
@@ -234,7 +266,7 @@
 
 <script>
   (function () {
-    var url = 'http://yoursite.com/2018/10/03/Hexo-First-Guide/';
+    var url = 'http://yoursite.com/2018/10/03/Java-ThreadPool-vs-Company/';
     var banner = ''
     if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
       $('#article-banner').css({
@@ -290,7 +322,7 @@
     var gitmentConfig = "fgu123";
     if (gitmentConfig !== 'undefined') {
       var gitment = new Gitment({
-        id: "Hexo Hello World",
+        id: "Java线程池类比公司经营之道",
         owner: "fgu123",
         repo: "fgu123.github.io",
         oauth: {
@@ -318,7 +350,7 @@
 <script>
   var disqus_shortname = '';
   
-  var disqus_url = 'http://yoursite.com/2018/10/03/Hexo-First-Guide/';
+  var disqus_url = 'http://yoursite.com/2018/10/03/Java-ThreadPool-vs-Company/';
   
   (function(){
     var dsq = document.createElement('script');

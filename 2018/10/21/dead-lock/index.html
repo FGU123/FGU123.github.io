@@ -173,10 +173,7 @@
 <li>环形等待：T1{O1}→→T2{O2}→→T1{O1}，{}表示被左边的线程占有{}里的资源，→→表示左边线程申请（等待）右边线程释放其占有的资源<br>PS：环形等待可以是多个线程对多个资源的争夺</li>
 </ul>
 <h2 id="“死锁”问题定位"><a href="#“死锁”问题定位" class="headerlink" title="“死锁”问题定位"></a>“死锁”问题定位</h2><h3 id="获取java进程ID"><a href="#获取java进程ID" class="headerlink" title="获取java进程ID"></a>获取java进程ID</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ps aux | grep <span class="string">"java"</span></span><br></pre></td></tr></table></figure>
-<h3 id="用jstack看进程堆栈"><a href="#用jstack看进程堆栈" class="headerlink" title="用jstack看进程堆栈"></a>用jstack看进程堆栈</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">jstack -l &#123;pid&#125; | grep -A50 -B10 <span class="string">"deadlock"</span></span><br></pre></td></tr></table></figure>
-<ul>
-<li>替换进程ID（pid）</li>
-</ul>
+<h3 id="用jstack看进程堆栈"><a href="#用jstack看进程堆栈" class="headerlink" title="用jstack看进程堆栈"></a>用jstack看进程堆栈</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 替换进程ID（pid）</span></span><br><span class="line">jstack -l &#123;pid&#125; | grep -A50 -B10 <span class="string">"deadlock"</span></span><br></pre></td></tr></table></figure>
 <p><img src="/images/post-dead-lock/20181021190116.jpg" alt="Java线程间死锁堆栈"></p>
 <h2 id="“死锁”的预防和解除"><a href="#“死锁”的预防和解除" class="headerlink" title="“死锁”的预防和解除"></a>“死锁”的预防和解除</h2><p>理解了死锁的原因，尤其是产生死锁的四个必要条件，就可以最大可能地避免、预防和解除死锁，消除产生死锁的四个必要条件中的任何一个都可以预防和解除死锁。不难看出，在死锁的四个必要条件中，第二、三和四项条件比较容易消除。</p>
 <ol>
@@ -194,20 +191,24 @@
       <div class="tags">
         <span>Tags:</span>
         
-  <a href="/tags#死锁" >
-    <span class="tag-code">死锁</span>
+  <a href="/tags#线程" >
+    <span class="tag-code">线程</span>
   </a>
 
-  <a href="/tags#DeadLock" >
-    <span class="tag-code">DeadLock</span>
+  <a href="/tags#并发" >
+    <span class="tag-code">并发</span>
   </a>
 
   <a href="/tags#Java" >
     <span class="tag-code">Java</span>
   </a>
 
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
+  <a href="/tags#死锁" >
+    <span class="tag-code">死锁</span>
+  </a>
+
+  <a href="/tags#DeadLock" >
+    <span class="tag-code">DeadLock</span>
   </a>
 
       </div>

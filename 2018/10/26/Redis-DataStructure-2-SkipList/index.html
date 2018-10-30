@@ -149,7 +149,9 @@
   <article class="post-article">
     <section class="markdown-content"><h2 id="Sorted-Set"><a href="#Sorted-Set" class="headerlink" title="Sorted Set"></a>Sorted Set</h2><p>有序集合键（sorted set）提供的操作非常丰富，可以满足非常多的应用场景。这也意味着，sorted set相对来说实现比较复杂。Redis使用跳跃表（skipList）作为sorted set的底层实现之一，如果一个sorted set包含的元素数量比较多，又或者sorted set中元素的成员（member）是比较长的字符串时，Redis就会使用跳跃表来作为sorted set的底层实现。</p>
 <p>跳跃表是一种有序数据结构，能支持平均O(logN)、最坏O(N)复杂度的节点查找，在大部分情况下，跳跃表的效率可以和平衡树相媲美，所以不少程序都使用跳跃表来替代平衡树。</p>
-<h2 id="跳跃表的实现"><a href="#跳跃表的实现" class="headerlink" title="跳跃表的实现"></a>跳跃表的实现</h2><p>一般查找问题的解法分为两个大类：一个是基于各种平衡树，一个是基于哈希表。但skiplist却比较特殊，它没法归属到这两大类里面。</p>
+<h2 id="sorted-set的数据结构"><a href="#sorted-set的数据结构" class="headerlink" title="sorted set的数据结构"></a>sorted set的数据结构</h2><p>有序集合（sorted set）的数据结构底层实现就是跳跃表+字典，如图：<br><img src="/images/post-Redis-DataStructure-2-SkipList/20181031030619.jpg" alt=""></p>
+<p><img src="/images/post-Redis-DataStructure-2-SkipList/20181031030813.jpg" alt=""></p>
+<h2 id="跳跃表的数据结构"><a href="#跳跃表的数据结构" class="headerlink" title="跳跃表的数据结构"></a>跳跃表的数据结构</h2><p>一般查找问题的解法分为两个大类：一个是基于各种平衡树，一个是基于哈希表。但skiplist却比较特殊，它没法归属到这两大类里面。</p>
 <p>skiplist，顾名思义，首先它是一个list。实际上，它是在有序链表的基础上发展起来的。</p>
 <p>下面我们从头分析一个要求有序的线性结构的查找元素及插入新元素存在的性能问题。</p>
 <p>最容易表达线性结构的自然是数组和链表。可是，无论是数组还是链表，在插入新元素的时候，都会存在性能问题。</p>
@@ -342,7 +344,7 @@
   <div class="toc-main">
     <strong class="toc-title">Catalog</strong>
     
-      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Sorted-Set"><span class="toc-nav-text">Sorted Set</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#跳跃表的实现"><span class="toc-nav-text">跳跃表的实现</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#skiplist与平衡树、哈希表的比较"><span class="toc-nav-text">skiplist与平衡树、哈希表的比较</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Redis中的sorted-set"><span class="toc-nav-text">Redis中的sorted set</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Redis为什么用skiplist而不用平衡树？"><span class="toc-nav-text">Redis为什么用skiplist而不用平衡树？</span></a></li></ol>
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Sorted-Set"><span class="toc-nav-text">Sorted Set</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#sorted-set的数据结构"><span class="toc-nav-text">sorted set的数据结构</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#跳跃表的数据结构"><span class="toc-nav-text">跳跃表的数据结构</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#skiplist与平衡树、哈希表的比较"><span class="toc-nav-text">skiplist与平衡树、哈希表的比较</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Redis中的sorted-set"><span class="toc-nav-text">Redis中的sorted set</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Redis为什么用skiplist而不用平衡树？"><span class="toc-nav-text">Redis为什么用skiplist而不用平衡树？</span></a></li></ol>
     
   </div>
 </aside>

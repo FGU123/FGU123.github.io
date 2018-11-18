@@ -279,43 +279,24 @@
 <p>第1条很好理解，只要保持幂等性，不管来多少条重复消息，最后处理的结果都一样。第2条原理就是利用一张日志表来记录已经处理成功的消息的ID，如果新到的消息ID已经在日志表中，那么就不再处理这条消息。</p>
 <p>我们可以看到第1条的解决方式，很明显应该在消费端实现，不属于消息系统要实现的功能。第2条可以消息系统实现，也可以业务端实现。正常情况下出现重复消息的概率不一定大，且由消息系统实现的话，肯定会对消息系统的吞吐量和高可用有影响，所以最好还是由业务端自己处理消息重复的问题，这也是RocketMQ不解决消息重复的问题的原因。</p>
 <p>RocketMQ不保证消息不重复，如果你的业务需要保证严格的不重复消息，需要你自己在业务端去重。</p>
-<h2 id="事务消息"><a href="#事务消息" class="headerlink" title="事务消息"></a>事务消息</h2><p>RocketMQ除了支持普通消息，顺序消息，另外还支持事务消息。首先讨论一下什么是事务消息以及支持事务消息的必要性。我们以一个转帐的场景为例来说明这个问题：Bob向Smith转账100块。</p>
-<p>在单机环境下，执行事务的情况，大概是下面这个样子：<br><img src="/images/post-RocketMQ-Summary/20160628163613018.jpg" alt=""></p>
-<p>当用户增长到一定程度，Bob和Smith的账户及余额信息已经不在同一台服务器上了，那么上面的流程就变成了这样：<img src="/images/post-RocketMQ-Summary/20160628164422155.jpg" alt=""></p>
-<p>这时候你会发现，同样是一个转账的业务，在集群环境下，耗时居然成倍的增长，这显然是不能够接受的。那我们如何来规避这个问题？</p>
-<blockquote>
-<p>大事务 = 小事务 + 异步</p>
-</blockquote>
-<p>将大事务拆分成多个小事务异步执行。这样基本上能够将跨机事务的执行效率优化到与单机一致。转账的事务就可以分解成如下两个小事务：</p>
-<p><img src="/images/post-RocketMQ-Summary/20160628164504397.jpg" alt=""></p>
-<p>图中执行本地事务（Bob账户扣款）和发送异步消息应该保持同时成功或者失败中，也就是扣款成功了，发送消息一定要成功，如果扣款失败了，就不能再发送消息。那问题是：我们是先扣款还是先发送消息呢？</p>
-<p>首先我们看下，先发送消息，大致的示意图如下：<br><img src="/images/post-RocketMQ-Summary/20160628164545475.jpg" alt=""></p>
-<p>存在的问题是：如果消息发送成功，但是扣款失败，消费端就会消费此消息，进而向Smith账户加钱。</p>
-<p>先发消息不行，那我们就先扣款呗，大致的示意图如下：<br><img src="/images/post-RocketMQ-Summary/20160628164625033.jpg" alt=""></p>
-<p>存在的问题跟上面类似：如果扣款成功，发送消息失败，就会出现Bob扣钱了，但是Smith账户未加钱。</p>
-<p>可能大家会有很多的方法来解决这个问题，比如：直接将发消息放到Bob扣款的事务中去，如果发送失败，抛出异常，事务回滚。这样的处理方式也符合“恰好”不需要解决的原则。RocketMQ支持事务消息，下面我们来看看RocketMQ是怎样来实现的。</p>
-<p><img src="/images/post-RocketMQ-Summary/20160628164703038.jpg" alt=""></p>
-<p>RocketMQ第一阶段发送Prepared消息时，会拿到消息的地址，第二阶段执行本地事物，第三阶段通过第一阶段拿到的地址去访问消息，并修改状态。细心的你可能又发现问题了，如果确认消息发送失败了怎么办？RocketMQ会定期扫描消息集群中的事物消息，这时候发现了Prepared消息，它会向消息发送者确认，Bob的钱到底是减了还是没减呢？如果减了是回滚还是继续发送确认消息呢？RocketMQ会根据发送端设置的策略来决定是回滚还是继续发送确认消息。这样就保证了消息发送与本地事务同时成功或同时失败。</p>
-<p>那我们来看下RocketMQ源码，是不是这样来处理事务消息的。客户端发送事务消息的部分（完整代码请查看：rocketmq-example工程下的com.alibaba.rocketmq.example.transaction.TransactionProducer）：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// 未决事务，MQ服务器回查客户端</span></span><br><span class="line"><span class="comment">// 也就是上文所说的，当RocketMQ发现`Prepared消息`时，会根据这个Listener实现的策略来决断事务</span></span><br><span class="line">TransactionCheckListener transactionCheckListener = <span class="keyword">new</span> TransactionCheckListenerImpl();</span><br><span class="line"><span class="comment">// 构造事务消息的生产者</span></span><br><span class="line">TransactionMQProducer producer = <span class="keyword">new</span> TransactionMQProducer(<span class="string">"groupName"</span>);</span><br><span class="line"><span class="comment">// 设置事务决断处理类</span></span><br><span class="line">producer.setTransactionCheckListener(transactionCheckListener);</span><br><span class="line"><span class="comment">// 本地事务的处理逻辑，相当于示例中检查Bob账户并扣钱的逻辑</span></span><br><span class="line">TransactionExecuterImpl tranExecuter = <span class="keyword">new</span> TransactionExecuterImpl();</span><br><span class="line">producer.start()</span><br><span class="line"><span class="comment">// 构造MSG，省略构造参数</span></span><br><span class="line">Message msg = <span class="keyword">new</span> Message(......);</span><br><span class="line"><span class="comment">// 发送消息</span></span><br><span class="line">SendResult sendResult = producer.sendMessageInTransaction(msg, tranExecuter, <span class="keyword">null</span>);</span><br><span class="line">producer.shutdown();</span><br></pre></td></tr></table></figure>
-<p>接着查看sendMessageInTransaction方法的源码，总共分为3个阶段：发送Prepared消息、执行本地事务、发送确认消息。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> TransactionSendResult <span class="title">sendMessageInTransaction</span><span class="params">(.....)</span>  </span>&#123;</span><br><span class="line">    <span class="comment">// 逻辑代码，非实际代码</span></span><br><span class="line">    <span class="comment">// 1.发送消息</span></span><br><span class="line">    sendResult = <span class="keyword">this</span>.send(msg);</span><br><span class="line">    <span class="comment">// sendResult.getSendStatus() == SEND_OK</span></span><br><span class="line">    <span class="comment">// 2.如果消息发送成功，处理与消息关联的本地事务单元</span></span><br><span class="line">    LocalTransactionState localTransactionState = tranExecuter.executeLocalTransactionBranch(msg, arg);</span><br><span class="line">    <span class="comment">// 3.结束事务</span></span><br><span class="line">    <span class="keyword">this</span>.endTransaction(sendResult, localTransactionState, localException);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>endTransaction方法会将请求发往broker(mq server)去更新事物消息的最终状态：</p>
-<blockquote>
-<ol>
-<li>根据sendResult找到Prepared消息</li>
-<li>根据localTransaction更新消息的最终状态</li>
-</ol>
-</blockquote>
-<p>如果endTransaction方法执行失败，导致数据没有发送到broker，broker会有回查线程定时（默认1分钟）扫描每个存储事务状态的表格文件，如果是已经提交或者回滚的消息直接跳过，如果是prepared状态则会向Producer发起CheckTransaction请求，Producer会调用DefaultMQProducerImpl.checkTransactionState()方法来处理broker的定时回调请求，而checkTransactionState会调用我们的事务设置的决断方法，最后调用endTransactionOneway让broker来更新消息的最终状态。</p>
-<p>再回到转账的例子，如果Bob的账户的余额已经减少，且消息已经发送成功，Smith端开始消费这条消息，这个时候就会出现消费失败和消费超时两个问题？解决超时问题的思路就是一直重试，直到消费端消费消息成功，整个过程中有可能会出现消息重复的问题，按照前面的思路解决即可。</p>
-<p><img src="/images/post-RocketMQ-Summary/20160628164932959.jpg" alt=""></p>
-<p>这样基本上可以解决超时问题，但是如果消费失败怎么办？阿里提供给我们的解决方法是：人工解决。大家可以考虑一下，按照事务的流程，因为某种原因Smith加款失败，需要回滚整个流程。如果消息系统要实现这个回滚流程的话，系统复杂度将大大提升，且很容易出现Bug，估计出现Bug的概率会比消费失败的概率大很多。我们需要衡量是否值得花这么大的代价来解决这样一个出现概率非常小的问题，这也是大家在解决疑难问题时需要多多思考的地方。</p>
-<blockquote>
-<p>在3.2.6版本中移除了事务消息的实现，所以此版本不支持事务消息，具体情况请参考rocketmq的issues：<br><a href="https://github.com/alibaba/RocketMQ/issues/65" target="_blank" rel="noopener">https://github.com/alibaba/RocketMQ/issues/65</a><br><a href="https://github.com/alibaba/RocketMQ/issues/138" target="_blank" rel="noopener">https://github.com/alibaba/RocketMQ/issues/138</a><br><a href="https://github.com/alibaba/RocketMQ/issues/156" target="_blank" rel="noopener">https://github.com/alibaba/RocketMQ/issues/156</a></p>
-</blockquote>
+<h2 id="事务消息"><a href="#事务消息" class="headerlink" title="事务消息"></a>事务消息</h2><p>RocketMQ除了支持普通消息，顺序消息，另外还支持事务消息。</p>
+<ul>
+<li><p>旧版事务：<br>参考 <a href="https://blog.csdn.net/asdf08442a/article/details/54882769" target="_blank" rel="noopener">RocketMQ总结整理</a>-事务消息</p>
+</li>
+<li><p>RocketMQ 4.3 新版事务：<br><img src="/images/post-RocketMQ-Summary/20181118221948.jpg" alt=""></p>
+</li>
+</ul>
+<p>这张图说明了事务消息的大致方案，分为两个逻辑：正常事务消息的发送及提交、事务消息的补偿流程。</p>
+<ul>
+<li><p>事务消息发送及提交：</p>
+<p>  发送消息（half消息）<br>  服务端响应消息写入结果<br>  根据发送结果执行本地事务（如果写入失败，此时half消息对业务不可见，本地逻辑不执行）<br>  根据本地事务状态执行Commit或者Rollback（Commit操作生成消息索引，消息对消费者可见）</p>
+</li>
+<li><p>补偿流程：</p>
+<p>  对没有Commit/Rollback的事务消息（pending状态的消息），从服务端发起一次“回查”<br>  Producer收到回查消息，检查回查消息对应的本地事务的状态<br>  根据本地事务状态，重新Commit或者Rollback<br>  补偿阶段用于解决消息Commit或者Rollback发生超时或者失败的情况。</p>
+</li>
+</ul>
 <h2 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h2><ul>
-<li><p>《不一样的技术创新-阿里巴巴2016双十一背后的技术》</p>
+<li><p>分布式消息引擎 《不一样的技术创新-阿里巴巴2016双十一背后的技术》</p>
 </li>
 <li><p><a href="https://www.jianshu.com/p/66edd4f99e3c" target="_blank" rel="noopener">RocketMq知识点理解</a></p>
 </li>

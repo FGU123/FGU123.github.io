@@ -65,7 +65,7 @@
       
         <li class="list-item">
           
-            <a href="/" class="item-link active">Home</a>
+            <a href="/" class="item-link">Home</a>
           
         </li>
       
@@ -104,7 +104,7 @@
         
           <li class="menu-item">
             
-              <a href="/" class="menu-link mobile-active">Home</a>
+              <a href="/" class="menu-link">Home</a>
             
           </li>
         
@@ -137,66 +137,93 @@
   </div>
 </header>
 
-    <main class="app-body">
-  
-    <article class="article-card">
-      <h2 class="article-head">
-        <a href="/2018/10/03/Java-ThreadPool-vs-Company/">Java线程池类比公司经营之道</a>
-      </h2>
-      <p class="article-date">October 3, 2018</p>
-      
-        
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
-  </a>
-
-  <a href="/tags#并发" >
-    <span class="tag-code">并发</span>
-  </a>
-
-      
-      <div class="article-summary">
-        
-          &emsp;&emsp;Java线程池的设计与公司经营的相似之处如果我们查看JDK源码，会发现FixedThreadPool、CachedThreadPool和SingleThreadExecutor都是通过创建一个ThreadPoolExcutor对象来实现的。我们来看一下该ThreadP ...
-        
-      </div>
-      <a class="more" href="/2018/10/03/Java-ThreadPool-vs-Company/">更多</a>
-    </article>
-  
-    <article class="article-card">
-      <h2 class="article-head">
-        <a href="/2018/10/03/Hexo-First-Guide/">Hexo Hello World</a>
-      </h2>
-      <p class="article-date">October 3, 2018</p>
-      
-        
-  <a href="/tags#HEXO" >
-    <span class="tag-code">HEXO</span>
-  </a>
-
-      
-      <div class="article-summary">
-        
-          Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any problems when using Hexo, you can find the answer ...
-        
-      </div>
-      <a class="more" href="/2018/10/03/Hexo-First-Guide/">更多</a>
-    </article>
-  
-
-  
-    <div class="guide-pager">
-  
-    <a href="/"><span class="page-arrow">← </span>Prev</a>
-  
-  
-    <a class="unvisible" href="/">Next <span class="page-arrow">→</span></a>
-  
+    <div id="article-banner">
+  <h2>Archives</h2>
+  <p class="post-date">文章归档</p>
 </div>
+<main class="app-body" id="archives">
+  
+  
+  
+    <section class="time-section">
+  <h1 class="section-year">
+    2018
+  </h1>
+  <div class="section-list">
+    
+    
+      <div class="section-list-item">
+        <a href="/2018/11/20/IO-Types/" class="archive-title">几张图总结几种I/O类型</a>
+        <p class="archive-date">11-20</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/11/18/RocketMQ-Summary/" class="archive-title">RocketMQ相关总结</a>
+        <p class="archive-date">11-18</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/11/05/ThreadLocal-Summary/" class="archive-title">总结ThreadLocal</a>
+        <p class="archive-date">11-05</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/11/03/Volatile-Summary/" class="archive-title">整理Volatile</a>
+        <p class="archive-date">11-03</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/11/03/Synchronized-Summary/" class="archive-title">整理Synchronized</a>
+        <p class="archive-date">11-03</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/11/03/Redis-DataStructure-3-Dict/" class="archive-title">Redis基本数据结构-Dict</a>
+        <p class="archive-date">11-03</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/10/26/Redis-DataStructure-2-SkipList/" class="archive-title">Redis基本数据结构-SkipList</a>
+        <p class="archive-date">10-26</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/10/21/dead-lock/" class="archive-title">死锁</a>
+        <p class="archive-date">10-21</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/10/14/Redis-DataStructure-1-String/" class="archive-title">Redis基本数据结构-SDS</a>
+        <p class="archive-date">10-14</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/10/14/Hexo-Search/" class="archive-title">Hexo添加搜索功能</a>
+        <p class="archive-date">10-14</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/10/03/Java-ThreadPool-vs-Company/" class="archive-title">Java线程池类比公司经营之道</a>
+        <p class="archive-date">10-03</p>
+      </div>
+    
+      <div class="section-list-item">
+        <a href="/2018/10/03/Hexo-First-Guide/" class="archive-title">Hexo Hello World</a>
+        <p class="archive-date">10-03</p>
+      </div>
+    
+  </div>
+</section>
   
 </main>
 
-
+<script>
+  (function () {
+    var url = 'http://yoursite.com/tags/UNIX/index.html';
+    $('#article-banner').geopattern(url);
+    $('.header').removeClass('fixed-header');
+  })();
+</script>
     <div class="scroll-top">
   <span class="arrow-icon"></span>
 </div>

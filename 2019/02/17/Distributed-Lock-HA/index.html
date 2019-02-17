@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="ppxu&#39;s blog">
+  <meta name="keyword" content="java, blog, article">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      Redis分布式锁实现去服务单点问题实践 | PPXu
+    
+  </title>
+  <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/plugins/gitment.css">
+  <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
+  <script src="/js/qrious.js"></script>
+<script src="/js/gitment.js"></script>
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+</head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>PPXu</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/search" class="item-link">Search</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/search" class="menu-link">Search</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>Redis分布式锁实现去服务单点问题实践</h2>
+  <p class="post-date">2019-02-17</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><h2 id="问题背景"><a href="#问题背景" class="headerlink" title="问题背景"></a>问题背景</h2><p>常见的单个应用服务需要完成某个功能模块，由于业务设计上的原因，该服务只允许一个而不能多个服务实例同时运行。但在高可用架构设计上，这存在单点问题，即一旦主机发生故障，如宕机或网络中断等，而导致服务终止，这种场景下我们希望能采用一种优雅的方式保证服务不中断。于是我们可以采用分布式锁来实现一主多备的高可用方案。</p>
+<h2 id="一主多备"><a href="#一主多备" class="headerlink" title="一主多备"></a>一主多备</h2><p>我们可以实现服务的一主多备模式，有且仅有一个master，至少一个standby，当master节点失败后则由多个standby中选取一个作为主节点继续提供服务。</p>
+<h2 id="分布式锁"><a href="#分布式锁" class="headerlink" title="分布式锁"></a>分布式锁</h2><p>考虑到需要有多个服务节点，但同时只允许一个服务节点运行，我们可以实现分布式锁来解决问题。</p>
+<h3 id="分布式锁的几个要求"><a href="#分布式锁的几个要求" class="headerlink" title="分布式锁的几个要求"></a>分布式锁的几个要求</h3><ul>
+<li>最基本要求：互斥性（唯一性），同一时间只能被一个机器节点上的一个线程获得锁。</li>
+<li>避免死锁：可重入性。</li>
+<li>高可用的锁获取及锁释放。</li>
+<li>高性能的锁获取及锁释放。</li>
+<li>阻塞性：最好是一把阻塞锁。</li>
+</ul>
+<h3 id="分布式锁的常见三种实现方式"><a href="#分布式锁的常见三种实现方式" class="headerlink" title="分布式锁的常见三种实现方式"></a>分布式锁的常见三种实现方式</h3><p>分布式锁的常见3种实现方式有基于数据库、缓存及zookeeper的实现，网上一抓有一大把的实现过程可以搜索，此处不详细说明，只简单说明一下各个实现的核心思路及优劣。</p>
+<h4 id="基于数据库的实现方式"><a href="#基于数据库的实现方式" class="headerlink" title="基于数据库的实现方式"></a>基于数据库的实现方式</h4><p>核心思想在于：利用数据库表的唯一索引，以方法名字段作为唯一键，想要执行方法时，使用方法名向表中插入数据，成功则表示获得锁，执行完成后再删除对应的行数据以释放锁。</p>
+<h5 id="优点"><a href="#优点" class="headerlink" title="优点"></a>优点</h5><p>思路简单，容易理解。</p>
+<h5 id="问题及优化"><a href="#问题及优化" class="headerlink" title="问题及优化"></a>问题及优化</h5><ol>
+<li>高可用及性能问题：基于数据库实现，数据库的可用性及性能直接影响分布式锁的可用性及性能。数据库要避免单点，需要双机部署、数据同步、主备切换等。</li>
+<li>不可重入：因为同一个线程在释放锁之前，行数据一直存在，无法再次成功插入数据。所以，需要在表中新增一列，用于记录当前获取到锁的机器和线程信息，在再次获取锁的时候，先查询表中机器和线程信息是否和当前机器和线程相同，若相同则直接获取锁。</li>
+<li>没有锁失效机制：因为有可能出现成功插入数据后，服务器宕机了，对应的数据没有被删除，导致锁一直被占用，不但其它节点无法获得锁，当服务恢复后也一直获取不到锁，所以，需要在表中新增一列，用于记录失效时间，并且需要有定时任务清除这些失效的数据。</li>
+<li>非阻塞锁：获取不到锁直接返回失败，所以需要优化获取逻辑，循环多次去获取。</li>
+</ol>
+<p><strong>注意：这只是使用基于数据库的一种方法，使用数据库实现分布式锁还有很多其他的玩法！</strong> </p>
+<h4 id="基于Zookeeper的实现方式"><a href="#基于Zookeeper的实现方式" class="headerlink" title="基于Zookeeper的实现方式"></a>基于Zookeeper的实现方式</h4><p>ZooKeeper是一个为分布式应用提供一致性服务的开源组件，它内部是一个分层的文件系统目录树结构，规定同一个目录下只能有一个唯一文件名。基于ZooKeeper实现分布式锁的步骤如下：</p>
+<p>（1）创建一个目录作为锁目录；<br>（2）线程A想获取锁就在锁目录下创建临时顺序节点；<br>（3）获取锁目录下所有的子节点，然后获取比自己小的兄弟节点，如果不存在，则说明当前线程顺序号最小，获得锁；<br>（4）线程B获取所有节点，判断自己不是最小节点，设置监听比自己次小的节点；<br>（5）线程A处理完，删除自己的节点，线程B监听到变更事件，判断自己是不是最小的节点，如果是则获得锁。</p>
+<h5 id="优点-1"><a href="#优点-1" class="headerlink" title="优点"></a>优点</h5><p>Zookeeper是一个分布式协同服务，使用Zookeeper实现分布式锁具有天然优势，最大的优点是API使用简单。</p>
+<p>建议直接使用zookeeper第三方库Curator客户端，这个客户端中封装了一个可重入的锁服务。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">tryLock</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> interProcessMutex.acquire(timeout, unit);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">unlock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        interProcessMutex.release();</span><br><span class="line">    &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">        log.error(e.getMessage(), e);</span><br><span class="line">    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">        executorService.schedule(<span class="keyword">new</span> Cleaner(client, path), delayTimeForClean, TimeUnit.MILLISECONDS);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>其它优点：</p>
+<ol>
+<li>解决单点问题：ZK是集群部署的，只要集群中有半数以上的机器存活，就可以对外提供服务。</li>
+<li>解决不可重入问题：客户端在创建节点的时候，把当前客户端的主机信息和线程信息直接写入到节点中，下次想要获取锁的时候和当前最小的节点中的数据比对一下就可以了。如果和自己的信息一样，那么自己直接获取到锁，如果不一样就再创建一个临时的顺序节点，参与排队。</li>
+<li>解决锁失效问题：使用ZK可以有效让锁自动失效而释放。在创建锁的时候，客户端会在ZK中创建一个临时节点，一旦客户端获取到锁之后突然挂掉（Session连接断开），那么这个临时节点就会自动删除掉。其他客户端就可以再次获得锁。</li>
+<li>解决非阻塞性问题：Watch机制，客户端可以通过在ZK中创建顺序节点，并且在节点上绑定监听器，一旦节点有变化，Zookeeper会通知客户端，客户端可以检查自己创建的节点是不是当前所有节点中序号最小的，如果是，那么自己就获取到锁。</li>
+</ol>
+<h5 id="缺点"><a href="#缺点" class="headerlink" title="缺点"></a>缺点</h5><ol>
+<li>性能问题：性能上不如使用缓存实现分布式锁。因为每次在创建锁和释放锁的过程中，都要动态创建、销毁瞬时节点来实现锁功能。ZK中创建和删除节点只能通过Leader服务器来执行，然后将数据同不到所有的Follower机器上。</li>
+<li>并发问题：在网络抖动情况下，客户端与ZK集群的session连接断了，那么zk以为客户端宕掉了，就会删除临时节点，这时候其他客户端就可以获取到分布式锁了。就可能产生并发问题。这个问题不常见是因为zk有重试机制，一旦zk集群检测不到客户端的心跳，就会重试，Curator客户端支持多种重试策略。多次重试之后还不行的话才会删除临时节点。（所以，选择一个合适的重试策略也比较重要，要在锁的粒度和并发之间找一个平衡。）</li>
+</ol>
+<p>建议尽可能的使用Zookeeper来实现分布式协同服务，但如果，业务强依赖于一个Redis集群且服务并没有使用Zookeeper的意愿，不妨可以试试使用Redis。</p>
+<h4 id="基于缓存的实现方式"><a href="#基于缓存的实现方式" class="headerlink" title="基于缓存的实现方式"></a>基于缓存的实现方式</h4><p>各种成熟的缓存产品，包括Redis，memcached以及Tair，分布式锁实现思路基本类似，以Redis举例说明核心思路：<br>（1）获取锁的时候，使用setnx加锁，并使用expire命令为锁添加一个超时时间，超过该时间则自动释放锁，锁的标识值为一个随机生成的UUID，通过此标识在释放锁的时候进行判断。<br>（2）获取锁的时候还设置一个获取的超时时间，若超过这个时间则放弃获取锁。<br>（3）释放锁的时候，通过UUID判断是不是该锁，若是该锁，则执行delete进行锁释放。</p>
+<h5 id="优点-2"><a href="#优点-2" class="headerlink" title="优点"></a>优点</h5><p>性能高是最大优点，基于内存实现的缓存系统。</p>
+<ol>
+<li>解决单点问题：Redis既可单点部署，也支持集群部署。</li>
+<li>解决不可重入问题：在一个线程获取到锁之后，把当前主机信息和线程信息保存起来，下次再获取之前先检查自己是不是当前锁的持有者。</li>
+<li>解决锁失效问题：设定锁key失效时间。</li>
+<li>非阻塞锁：可以循环多次去执行获取操作，直至获得锁。</li>
+</ol>
+<p>至于失效时间设多久才好？<br>Redisson给出了解决方案–Watchdog看门狗：<br>先获得锁，默认过期时间30秒，如果处理完了，走正常逻辑。 对一个值加锁之后，会在自身维护一个Watchdog后台线程，维护一个内部队列，每过10秒去重新设置一下锁Key的过期时间，这样，一个锁即使对应的进程挂掉，也就维持30秒的时间，如果没有挂，并且30秒不够用了，内部队列会不断的更新这个过期时间为30秒，保证不会出现锁饥饿的问题。<br><br><br>事实上，使用Redisson，还有一个好处，就是Redisson调Redis命令的底层实现，是使用Lua脚本，这样做，是因为假设有一大坨复杂的业务逻辑，可以通过封装在Lua脚本中发送给Redis，保证这段复杂的业务逻辑执行的原子性。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Future&lt;Long&gt; <span class="title">tryLockInnerAsync</span><span class="params">(<span class="keyword">final</span> <span class="keyword">long</span> leaseTime, <span class="keyword">final</span> TimeUnit unit, <span class="keyword">long</span> threadId)</span> </span>&#123;</span><br><span class="line">       internalLockLeaseTime = unit.toMillis(leaseTime);</span><br><span class="line"></span><br><span class="line">       <span class="keyword">return</span> commandExecutor.evalWriteAsync(getName(), LongCodec.INSTANCE, RedisCommands.EVAL_LONG,</span><br><span class="line">                           <span class="string">"local mode = redis.call('hget', KEYS[1], 'mode'); "</span> +</span><br><span class="line">                           <span class="string">"if (mode == false) then "</span> +</span><br><span class="line">                                 <span class="string">"redis.call('hset', KEYS[1], 'mode', 'write'); "</span> +</span><br><span class="line">                                 <span class="string">"redis.call('hset', KEYS[1], ARGV[2], 1); "</span> +</span><br><span class="line">                                 <span class="string">"redis.call('pexpire', KEYS[1], ARGV[1]); "</span> +</span><br><span class="line">                                 <span class="string">"return nil; "</span> +</span><br><span class="line">                             <span class="string">"end; "</span> +</span><br><span class="line">                             <span class="string">"if (mode == 'write') then "</span> +</span><br><span class="line">                                 <span class="string">"if (redis.call('hexists', KEYS[1], ARGV[2]) == 1) then "</span> +</span><br><span class="line">                                     <span class="string">"redis.call('hincrby', KEYS[1], ARGV[2], 1); "</span> +</span><br><span class="line">                                     <span class="string">"redis.call('pexpire', KEYS[1], ARGV[1]); "</span> +</span><br><span class="line">                                     <span class="string">"return nil; "</span> +</span><br><span class="line">                                 <span class="string">"end; "</span> +</span><br><span class="line">                               <span class="string">"end;"</span> +</span><br><span class="line">                               <span class="string">"return redis.call('pttl', KEYS[1]);"</span>,</span><br><span class="line">                       Arrays.&lt;Object&gt;asList(getName()), internalLockLeaseTime, getLockName(threadId));</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<h5 id="缺点-1"><a href="#缺点-1" class="headerlink" title="缺点"></a>缺点</h5><ol>
+<li>通过超时时间来控制锁的失效时间并非十分的靠谱。譬如在指定的锁Key更新时间内网络抖动导致无法正常失效时间，被认为锁被主节点主动释放了，而实际上并没有，但备节点此时可能已抢得锁，出现多客户端获得锁的问题。</li>
+<li>最大的问题，还是在于Redis的主从集群的复制问题。客户端1对Redis Master写入锁Key的Value，此时会异步复制给Redis Slave。一旦发生Master宕机，Redis主从切换，Slave变成了新的Master，而此时若有客户端2来尝试加锁，在新的Master上完成了加锁，而客户端1也以为自己成功加了锁，此时也出现了多客户端获得锁的问题。</li>
+</ol>
+<h2 id="使用Redis分布式锁去服务单点实践"><a href="#使用Redis分布式锁去服务单点实践" class="headerlink" title="使用Redis分布式锁去服务单点实践"></a>使用Redis分布式锁去服务单点实践</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String REDIS_ADDRESS = <span class="string">"192.168.4.104:6379"</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String REDIS_PASSWORD = <span class="string">"redis"</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String LOCK_KEY = <span class="string">"redis_lock"</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">runWithRedisLock</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	RedissonClient redissonClient = RedisUtils.getRedissonClientInstance(</span><br><span class="line">			REDIS_ADDRESS, REDIS_PASSWORD);</span><br><span class="line"></span><br><span class="line">	RedissonLock lock = (RedissonLock) redissonClient.getLock(LOCK_KEY);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 异步方式尝试Redis加锁操作</span></span><br><span class="line">	Future&lt;Boolean&gt; tryLockAsync = lock.tryLockAsync(<span class="number">1</span>, TimeUnit.SECONDS);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">try</span> &#123;</span><br><span class="line">		<span class="comment">// 一定要通过调get方法拿到执行加锁的结果，因为是异步方式加锁，调此方法会阻塞直至拿到执行结果</span></span><br><span class="line">		<span class="keyword">if</span> (tryLockAsync.get()) &#123;</span><br><span class="line">			<span class="comment">// 尝试执行业务逻辑，如果发生异常，则释放锁 </span></span><br><span class="line">			<span class="keyword">try</span> &#123;</span><br><span class="line">				Application.runApplication(args);</span><br><span class="line">			&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">				ILOG.error(<span class="string">"run application exception, "</span>, e);</span><br><span class="line">				<span class="keyword">if</span>( lock.isHeldByCurrentThread() ) &#123;</span><br><span class="line">					lock.unlock();</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			ILOG.info(<span class="string">"lock[&#123;&#125;] is being held"</span>, lock.getName());</span><br><span class="line">			Application.stopApplication(args);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line">		ILOG.error(<span class="string">"lock interrupted exception, "</span>, e);</span><br><span class="line">	&#125; <span class="keyword">catch</span> (ExecutionException e) &#123;</span><br><span class="line">		ILOG.error(<span class="string">"lock executed exception, "</span>, e);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.redisson.Config;</span><br><span class="line"><span class="keyword">import</span> org.redisson.Redisson;</span><br><span class="line"><span class="keyword">import</span> org.redisson.RedissonClient;</span><br><span class="line"><span class="keyword">import</span> org.redisson.SingleServerConfig;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">RedisUtils</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> String address;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> String password;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> RedissonClient <span class="title">getRedissonClientInstance</span><span class="params">(String redisAddress,</span></span></span><br><span class="line"><span class="function"><span class="params">			String redisPassword)</span> </span>&#123;</span><br><span class="line">		address = redisAddress;</span><br><span class="line">		password = redisPassword;</span><br><span class="line">		<span class="keyword">return</span> RedissonClientHolder.instance;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">RedissonClientHolder</span> </span>&#123;</span><br><span class="line">		<span class="keyword">private</span> <span class="keyword">static</span> RedissonClient instance = createRedissonClient(address,</span><br><span class="line">				password);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">private</span> <span class="keyword">static</span> RedissonClient <span class="title">createRedissonClient</span><span class="params">(String address,</span></span></span><br><span class="line"><span class="function"><span class="params">			String password)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">try</span> &#123;</span><br><span class="line">			Config config = <span class="keyword">new</span> Config();</span><br><span class="line">			SingleServerConfig singleSerververConfig = config.useSingleServer();</span><br><span class="line">			singleSerververConfig.setAddress(address).setPassword(password)</span><br><span class="line">			.setConnectionMinimumIdleSize(<span class="number">1</span>).setConnectionPoolSize(<span class="number">64</span>);</span><br><span class="line">			RedissonClient redissonClient = Redisson.create(config);</span><br><span class="line">			<span class="keyword">return</span> redissonClient;</span><br><span class="line">		&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">			e.printStackTrace();</span><br><span class="line">			<span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="降级处理的实践"><a href="#降级处理的实践" class="headerlink" title="降级处理的实践"></a>降级处理的实践</h2><p>如上所述，如果Redis（或Redis集群）服务宕掉了，或者当网络抖动或Redis集群主从切换导致的各种异常导致Redis方式不可行，于是，需要做降级处理，所谓降级，就是异常情况下的备胎处理方式，这里我们使用一种比较容易理解的方式，让各个节点使用netCat命令进行端口检测，如果检测到兄弟节点中有正在运行的服务，则退出自己当前的服务。如果全部节点都不在运行服务，则说明自己可以“获得锁”，便可运行服务。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(<span class="keyword">final</span> String[] args)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 设置定时器，定时检测运行</span></span><br><span class="line">	Timer timer = <span class="keyword">new</span> Timer();</span><br><span class="line"></span><br><span class="line">	timer.schedule(<span class="keyword">new</span> TimerTask() &#123;</span><br><span class="line"></span><br><span class="line">		<span class="meta">@Override</span></span><br><span class="line">		<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">			<span class="keyword">try</span> &#123;</span><br><span class="line">				runWithRedisLock(args);</span><br><span class="line">			&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">				runWithNetCat(args);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;, <span class="number">0</span>, <span class="number">10000</span>);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> isRunning = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 各个兄弟节点的服务地址+端口</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> List&lt;String&gt; ADDRESSES = Arrays</span><br><span class="line">		.asList(<span class="string">"192.168.11.20:8080"</span>,<span class="string">"192.168.11.21:8080"</span>,<span class="string">"192.168.11.22:8080"</span>);</span><br><span class="line">		</span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">runWithNetCat</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (isRunning) &#123;</span><br><span class="line">		ILOG.info(<span class="string">"application is already running"</span>);</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">boolean</span> hasRunner = <span class="keyword">false</span>;</span><br><span class="line">	<span class="keyword">for</span> (String address : ADDRESSES) &#123;</span><br><span class="line">		String[] addrPart = address.split(<span class="string">":"</span>);</span><br><span class="line">		<span class="keyword">if</span> (netCat(addrPart[<span class="number">0</span>], Integer.valueOf(addrPart[<span class="number">1</span>]))) &#123;</span><br><span class="line">			hasRunner = <span class="keyword">true</span>;</span><br><span class="line">			Application.stopApplication(args);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> (!hasRunner) &#123;</span><br><span class="line">		Application.runApplication(args);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">netCat</span><span class="params">(String host, <span class="keyword">int</span> port)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">try</span> &#123;</span><br><span class="line">		NetUtil.netCat(host, port, <span class="keyword">new</span> <span class="keyword">byte</span>[] &#123;&#125;);</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">	&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">		ILOG.warn(<span class="string">"net check error. "</span>, e);</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></section>
+    <!-- Tags START -->
+    
+      <div class="tags">
+        <span>Tags:</span>
+        
+  <a href="/tags#Distributed" >
+    <span class="tag-code">Distributed</span>
+  </a>
+
+  <a href="/tags#HA" >
+    <span class="tag-code">HA</span>
+  </a>
+
+  <a href="/tags#Redis" >
+    <span class="tag-code">Redis</span>
+  </a>
+
+  <a href="/tags#Redisson" >
+    <span class="tag-code">Redisson</span>
+  </a>
+
+      </div>
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2018/11/20/IO-Types/">
+        <span class="nav-arrow">← </span>
+        
+          几张图总结几种I/O类型
+        
+      </a>
+    
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <!--<div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>-->
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- No Comment -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#问题背景"><span class="toc-nav-text">问题背景</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#一主多备"><span class="toc-nav-text">一主多备</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#分布式锁"><span class="toc-nav-text">分布式锁</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#分布式锁的几个要求"><span class="toc-nav-text">分布式锁的几个要求</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#分布式锁的常见三种实现方式"><span class="toc-nav-text">分布式锁的常见三种实现方式</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#基于数据库的实现方式"><span class="toc-nav-text">基于数据库的实现方式</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#优点"><span class="toc-nav-text">优点</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#问题及优化"><span class="toc-nav-text">问题及优化</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#基于Zookeeper的实现方式"><span class="toc-nav-text">基于Zookeeper的实现方式</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#优点-1"><span class="toc-nav-text">优点</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#缺点"><span class="toc-nav-text">缺点</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-4"><a class="toc-nav-link" href="#基于缓存的实现方式"><span class="toc-nav-text">基于缓存的实现方式</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#优点-2"><span class="toc-nav-text">优点</span></a></li><li class="toc-nav-item toc-nav-level-5"><a class="toc-nav-link" href="#缺点-1"><span class="toc-nav-text">缺点</span></a></li></ol></li></ol></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#使用Redis分布式锁去服务单点实践"><span class="toc-nav-text">使用Redis分布式锁去服务单点实践</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#降级处理的实践"><span class="toc-nav-text">降级处理的实践</span></a></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'http://yoursite.com/2019/02/17/Distributed-Lock-HA/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+     // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', 'http://file.muyutech.com/error-img.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== 'http://file.muyutech.com/error-img.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+        
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+
+    // qrcode
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+
+    // gitment
+    var gitmentConfig = "fgu123";
+    if (gitmentConfig !== 'undefined') {
+      var gitment = new Gitment({
+        id: "Redis分布式锁实现去服务单点问题实践",
+        owner: "fgu123",
+        repo: "fgu123.github.io",
+        oauth: {
+          client_id: "0f87e490e00ee3fd87ef",
+          client_secret: "4a9d2b148e7971c2201ad12131ce8bf8159ccd2e"
+        },
+        theme: {
+          render(state, instance) {
+            const container = document.createElement('div')
+            container.lang = "en-US"
+            container.className = 'gitment-container gitment-root-container'
+            container.appendChild(instance.renderHeader(state, instance))
+            container.appendChild(instance.renderEditor(state, instance))
+            container.appendChild(instance.renderComments(state, instance))
+            container.appendChild(instance.renderFooter(state, instance))
+            return container;
+          }
+        }
+      })
+      gitment.render(document.getElementById('comments'))
+    }
+  })();
+</script>
+
+<script>
+  var disqus_shortname = '';
+  
+  var disqus_url = 'http://yoursite.com/2019/02/17/Distributed-Lock-HA/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2019 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+<script src="/js/script.js"></script>
+  </body>
+</html>

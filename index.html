@@ -141,6 +141,38 @@
   
     <article class="article-card">
       <h2 class="article-head">
+        <a href="/2019/02/17/Distributed-Lock-HA/">Redis分布式锁实现去服务单点问题实践</a>
+      </h2>
+      <p class="article-date">February 17, 2019</p>
+      
+        
+  <a href="/tags#Distributed" >
+    <span class="tag-code">Distributed</span>
+  </a>
+
+  <a href="/tags#HA" >
+    <span class="tag-code">HA</span>
+  </a>
+
+  <a href="/tags#Redis" >
+    <span class="tag-code">Redis</span>
+  </a>
+
+  <a href="/tags#Redisson" >
+    <span class="tag-code">Redisson</span>
+  </a>
+
+      
+      <div class="article-summary">
+        
+          问题背景常见的单个应用服务需要完成某个功能模块，由于业务设计上的原因，该服务只允许一个而不能多个服务实例同时运行。但在高可用架构设计上，这存在单点问题，即一旦主机发生故障，如宕机或网络中断等，而导致服务终止，这种场景下我们希望能采用一种优雅的方式保证服务不中断。于是我们可以采用分布式锁来实现 ...
+        
+      </div>
+      <a class="more" href="/2019/02/17/Distributed-Lock-HA/">更多</a>
+    </article>
+  
+    <article class="article-card">
+      <h2 class="article-head">
         <a href="/2018/11/20/IO-Types/">几张图总结几种I/O类型</a>
       </h2>
       <p class="article-date">November 20, 2018</p>
@@ -217,12 +249,12 @@ RocketMQ总体特点
       <p class="article-date">November 5, 2018</p>
       
         
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
-  </a>
-
   <a href="/tags#并发" >
     <span class="tag-code">并发</span>
+  </a>
+
+  <a href="/tags#线程" >
+    <span class="tag-code">线程</span>
   </a>
 
   <a href="/tags#同步" >
@@ -249,12 +281,12 @@ RocketMQ总体特点
       <p class="article-date">November 3, 2018</p>
       
         
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
-  </a>
-
   <a href="/tags#并发" >
     <span class="tag-code">并发</span>
+  </a>
+
+  <a href="/tags#线程" >
+    <span class="tag-code">线程</span>
   </a>
 
   <a href="/tags#同步" >
@@ -286,12 +318,12 @@ Volatile简介volatile是轻量级的synchronized，它在多处理器开发中�
       <p class="article-date">November 3, 2018</p>
       
         
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
-  </a>
-
   <a href="/tags#并发" >
     <span class="tag-code">并发</span>
+  </a>
+
+  <a href="/tags#线程" >
+    <span class="tag-code">线程</span>
   </a>
 
   <a href="/tags#同步" >
@@ -367,12 +399,12 @@ Synchronized简介Synchronized一直是Java多线程并发编程中用作同步�
       <p class="article-date">October 21, 2018</p>
       
         
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
-  </a>
-
   <a href="/tags#并发" >
     <span class="tag-code">并发</span>
+  </a>
+
+  <a href="/tags#线程" >
+    <span class="tag-code">线程</span>
   </a>
 
   <a href="/tags#锁" >
@@ -411,31 +443,6 @@ Java代码举例1234567891011121314151 ...
         
       </div>
       <a class="more" href="/2018/10/14/Redis-DataStructure-1-String/">更多</a>
-    </article>
-  
-    <article class="article-card">
-      <h2 class="article-head">
-        <a href="/2018/10/14/Hexo-Search/">Hexo添加搜索功能</a>
-      </h2>
-      <p class="article-date">October 14, 2018</p>
-      
-        
-  <a href="/tags#HEXO" >
-    <span class="tag-code">HEXO</span>
-  </a>
-
-  <a href="/tags#搜索" >
-    <span class="tag-code">搜索</span>
-  </a>
-
-      
-      <div class="article-summary">
-        
-          本文旨在记录站主基于hexo-generator-search插件实现本站的站内文章搜索功能
-基本实现原理  基于hexo-generator-search生成全文内容索引xml文件  利用jQ.ajax请求xml文件并解析  jQ搜索关键字内容匹配xml内容主要的部分还是插件写的好，对应的 ...
-        
-      </div>
-      <a class="more" href="/2018/10/14/Hexo-Search/">更多</a>
     </article>
   
 

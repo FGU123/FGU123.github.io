@@ -10,7 +10,7 @@
   
   <title>
     
-      Java线程池类比公司经营之道 | PPXu
+      关于页缓存技术提高中间件读写性能的应用 | PPXu
     
   </title>
   <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -138,8 +138,8 @@
 </header>
 
     <div id="article-banner">
-  <h2>Java线程池类比公司经营之道</h2>
-  <p class="post-date">2018-10-03</p>
+  <h2>关于页缓存技术提高中间件读写性能的应用</h2>
+  <p class="post-date">2019-03-17</p>
   <div class="arrow-down">
     <a href="javascript:;"></a>
   </div>
@@ -147,28 +147,50 @@
 <main class="app-body flex-box">
   <!-- Article START -->
   <article class="post-article">
-    <section class="markdown-content"><p>&emsp;&emsp;Java线程池的设计与公司经营的相似之处如果我们查看JDK源码，会发现FixedThreadPool、CachedThreadPool和SingleThreadExecutor都是通过创建一个ThreadPoolExcutor对象来实现的。我们来看一下该ThreadPoolExcutor的构造方法，并对线程池中线程的保留和新建策略做进一步的分析。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ThreadPoolExecutor</span><span class="params">( <span class="keyword">int</span> corePoolSize, <span class="keyword">int</span> maximumPoolSize, <span class="keyword">long</span> keepAliveTime, TimeUnit unit, BlockingQueue&lt;Runnable&gt; workQueue)</span></span></span><br></pre></td></tr></table></figure>
-<p>&emsp;&emsp;第一个参数corePoolSize代表了线程池中一定要保持的线程的数量；线程池中的线程可能发生变化，第二个参数maximumPoolSize约束了线程池中所能达到的线程的最大数量；线程有可能一直处于空闲状态，keepAliveTime代表了空闲状态的线程所能存活的时间；TimeUnit代表了时间单位；workQueue是一个缓冲队列，如果任务到达，但是还没有空闲线程可以执行该任务，那么就将该任务置于这个缓冲队列中。为了更加容易理解和记忆线程池这个几个属性的协调工作。我们利用一个精明的老板来比喻线程池。而将线程比作线程中的线程。</p>
-<p>&emsp;&emsp;一个公司必须要保留一定数量的核心员工，不管这些员工是不是老闲着。当然，对于非常抠门的老板，这个数量可能是0，例如CachedThreadPool。核心员工的数量，就是corePoolSize。当一个公司初创时，所有的员工也就是那几个核心员工。当线程池新建时，同样只会创建与corePoolSize数量相当的线程。</p>
-<p>&emsp;&emsp;当新的任务到达时，如果有空闲线程，马上将这些任务分配给空闲线程。如果没有的话，那么，怎么办呢？新建一个线程吗？非也，对于一个精明的老板来说，他只会把这些任务排进任务列表。手下的员工忙完手头的工作，马上就从任务列表的开头位置移出工作，并分配给空闲。这就让每名员工都不停的工作，甚至加班加点。这个任务列表就是workQueue。</p>
-<p>&emsp;&emsp;如果更多的任务涌过来，如同这个公司的业务很好，工作多越堆越多。这个时候，就看任务列表能承受的极限了。有的老板在创立公司的时候，就抱着这种心态——任务列表可以无限长，反正我就招这么多人，客户能等就等，不能等就拉倒。但是，对于很多客户来说，如果等的时间过长，可能就放弃了。具有无限长workQueue的线程池来说，可能同样会导致某些线程等待时间过长，用户任务无响应的问题。</p>
-<p>&emsp;&emsp;但是，如果workQueue不是无限长，那么，其容量总有可能被达到。而新的任务到达时，无法存入workQueue。这如同，这个老板既负责任（不想出现客户无限等待的情况），同时又不想放弃任何一个客户。那么，唯有增加员工数量了，这就如同线程池新建线程。但是，公司总要有个风险评估，不能让员工数量无限增长，于是，maximumPoolSize就代表了员工的最大数量。如同说，在无法两全其美的情形下，即使损失部分客户，也要控制公司的成本风险。线程池同样如此，每个线程都将消耗系统资源，这种消耗必须被控制在一定范围之内。</p>
-<p>&emsp;&emsp;在大量任务涌入，workQueue无法缓存这些任务，而maxinumPoolSize也已经达到时，相当于一个公司达到了它的最大营运能力，就只能拒绝介绍客户任务了。线程池拒绝介绍新的任务，会抛出异常RejectedExecutionException。</p>
-<p>&emsp;&emsp;当然，一个公司的营运既有旺季，也有淡季。上面我们所描述的情形是旺季的营运。如果淡季到了，许多员工都闲下来了。老板就会考虑裁员了。当然，老板不会马上动手，因为不能准确把握旺季和淡季的分界线。他会给空闲员工一个缓冲期，如果这个员工闲了三个月都没工作，那么证明，真的需要裁掉他了。对应到线程池中，keepAliveTime和TimeUnit限制了一个线程的最大空闲时间。相当于一个缓冲期，缓冲期一结束，就会将其销毁，以释放系统资源。当然，这些被“处理”的线程都是核心员工数量之外的，线程池总会保留corePoolSize个线程备用。</p>
-<p>&emsp;&emsp;通过以上描述，我们应该对线程池的运作策略有了一个比较清晰的认识。总结这种策略，主要目的是基于成本考虑——尽量耗用最少的内存，来完成尽可能多的任务。</p>
+    <section class="markdown-content"><h1 id="页缓存"><a href="#页缓存" class="headerlink" title="页缓存"></a>页缓存</h1><p>在计算机系统中，页面缓存（有时也称为磁盘缓存）是用于源自诸如硬盘驱动器（HDD）或固态驱动器（SSD）的辅助存储设备的页面的透明缓存。操作系统将页面缓存保留在主存储器（RAM，内存）的其他未使用部分中，从而更快地访问缓存页面的内容和达到整体性能改进。页面缓存在具有分页内存管理的内核中实现，并且对应用程序大多是透明的。通常是由操作系统将所有未直接分配给应用程序的物理内存用于页面缓存。</p>
+<p></p><p><br>以linux系统为例，linux中页缓存的本质就是对于磁盘中的部分数据在内存中保留一定的副本，使得应用程序能够快速的读取到磁盘中相应的数据，并实现不同进程之间的数据共享。</p>
+<p></p><p><br>因此，linux中页缓存的引入主要是为了解决两类重要的问题：</p>
+<p>1.磁盘读写速度较慢（ms 级别);</p>
+<p>2.实现不同进程之间或者同一进程的前后不同部分之间对于数据的共享；</p>
+<p></p><p><br>在虚拟内存机制出现以前，操作系统使用块缓存机制，但是在虚拟内存出现以后操作系统管理IO的粒度更大，因此采用了页缓存机制。此后，和后备存储的数据交互普遍以页为单位。页缓存是基于页的、面向文件的一种缓存机制。</p>
+<p></p><p><br>简单来讲，页缓存就是一种副本技术，为加速磁盘读写而在内存中保留的一份磁盘数据的副本，又称为磁盘缓存、文件系统缓存。</p>
+<p></p><p><br>—- <a href="https://en.wikipedia.org/wiki/Page_cache" target="_blank" rel="noopener">Page Cache(From Wikipedia)</a></p>
+<h2 id="页缓存在RocketMQ的应用"><a href="#页缓存在RocketMQ的应用" class="headerlink" title="页缓存在RocketMQ的应用"></a>页缓存在RocketMQ的应用</h2><h3 id="刷盘策略"><a href="#刷盘策略" class="headerlink" title="刷盘策略"></a>刷盘策略</h3><p><img src="/images/post-RocketMQ-Summary/20181118164510.jpg" alt=""><br>作为一款纯 Java 语言开发的消息引擎，RocketMQ 自主研发的存储组件，依赖 Page Cache 进行加速和堆积，意味着它的性能会受到 JVM、 GC、内核、Linux 内存管理机制、文件 IO 等因素的影响。Rocketmq中的所有消息都是持久化到硬盘的，但会使用系统PageCache加速访问，消息的落地方式是先写PageCache后刷盘，可以保证内存与磁盘都有一份数据，访问时，可以直接从内存读取。如图所示，一条消息从客户端发送出，到最终落盘持久化。</p>
+<p></p><p><br>—- <a href="/2018/11/18/RocketMQ-Summary">RocketMQ相关总结</a></p>
+<h2 id="Kafka的高性能写入"><a href="#Kafka的高性能写入" class="headerlink" title="Kafka的高性能写入"></a>Kafka的高性能写入</h2><h3 id="页缓存技术-磁盘顺序写"><a href="#页缓存技术-磁盘顺序写" class="headerlink" title="页缓存技术 + 磁盘顺序写"></a>页缓存技术 + 磁盘顺序写</h3><p>同RocketMQ的持久化操作的设计类似，Kafka每次接收到数据都会往磁盘上去写，而为了保证数据写入性能，Kafka也是基于操作系统的页缓存来实现文件写入的。</p>
+<p></p><p><br>在消息生产端写入消息时，其实是直接写入到OS Cache（Page Cache）中，也就是说仅仅是写入到内存中，而接下来由操作系统自己决定什么时候把os cache里的数据真的刷入磁盘文件中。</p>
+<p></p><p><br>另外，还有关键的一点，就是kafka写数据的方式是顺序写入，也就是说，仅仅将数据追加到文件的末尾，而不是在文件的随机位置来修改数据。</p>
+<p></p><p><br>—- <a href="http://developer.51cto.com/art/201903/592916.htm" target="_blank" rel="noopener">Kafka如何实现每秒上百万的超高并发写入？</a></p>
+<h2 id="为什么说Elastic-Search是准实时的搜索"><a href="#为什么说Elastic-Search是准实时的搜索" class="headerlink" title="为什么说Elastic Search是准实时的搜索"></a>为什么说Elastic Search是准实时的搜索</h2><p>Elasticsearch和磁盘之间有一层称为FileSystem Cache的系统缓存（OS Cache），正是由于这层cache的存在才使得es能够拥有更快搜索响应能力。</p>
+<p></p><p><br>我们都知道一个index是由若干个segment组成，随着每个segment的不断增长，我们索引一条数据后可能要经过分钟级别的延迟才能被搜索，为什么有种这么大的延迟，这里面的瓶颈点主要在磁盘。</p>
+<p></p><p><br>持久化一个segment需要fsync操作用来确保segment能够物理的被写入磁盘以真正的避免数据丢失，但是fsync操作比较耗时，所以它不能在每索引一条数据后就执行一次，如果那样索引和搜索的延迟都会非常之大。</p>
+<p></p><p><br>所以这里需要一个更轻量级的处理方式，从而保证搜索的延迟更小。这就需要用到上面提到的FileSystem Cache，所以在es中新增的document会被收集到indexing buffer区后被重写成一个segment然后直接写入filesystem cache中，这个操作是非常轻量级的，相对耗时较少，之后经过一定的间隔或外部触发后才会被flush到磁盘上，这个操作非常耗时。但只要sengment文件被写入cache后，这个sengment就可以打开和查询，从而确保在短时间内就可以搜到，而不用执行一个full commit也就是fsync操作，这是一个非常轻量级的处理方式而且是可以高频次的被执行，而不会破坏es的性能。</p>
+<p></p><p><br>—- <a href="https://www.elastic.co/guide/cn/elasticsearch/guide/current/near-real-time.html" target="_blank" rel="noopener">Elastic Search的近实时搜索</a></p>
+<h2 id="架构的设计思想，本质大同"><a href="#架构的设计思想，本质大同" class="headerlink" title="架构的设计思想，本质大同"></a>架构的设计思想，本质大同</h2><p>由一个页缓存技术的利用可以看出，多个中间件在处理数据高性能读写问题方面的思想基本大同。</p>
 </section>
     <!-- Tags START -->
     
       <div class="tags">
         <span>Tags:</span>
         
-  <a href="/tags#并发" >
-    <span class="tag-code">并发</span>
+  <a href="/tags#MiddleWare" >
+    <span class="tag-code">MiddleWare</span>
   </a>
 
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
+  <a href="/tags#OS Cache/Page Cache/FileSystem Cache" >
+    <span class="tag-code">OS Cache/Page Cache/FileSystem Cache</span>
+  </a>
+
+  <a href="/tags#Kafka" >
+    <span class="tag-code">Kafka</span>
+  </a>
+
+  <a href="/tags#Elastic Search" >
+    <span class="tag-code">Elastic Search</span>
+  </a>
+
+  <a href="/tags#RocketMQ" >
+    <span class="tag-code">RocketMQ</span>
   </a>
 
       </div>
@@ -179,20 +201,13 @@
   <div class="nav-container">
     <!-- reverse left and right to put prev and next in a more logic postition -->
     
-      <a class="nav-left" href="/2018/10/03/Hexo-First-Guide/">
+      <a class="nav-left" href="/2019/02/17/Distributed-Lock-HA/">
         <span class="nav-arrow">← </span>
         
-          Hexo Hello World
+          Redis分布式锁实现去服务单点问题实践
         
       </a>
     
-    
-      <a class="nav-right" href="/2018/10/14/Hexo-Search/">
-        
-          Hexo添加搜索功能
-        
-        <span class="nav-arrow"> →</span>
-      </a>
     
   </div>
 
@@ -236,7 +251,7 @@
   <div class="toc-main">
     <strong class="toc-title">Catalog</strong>
     
-      <ol class="nav">none</ol>
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#页缓存"><span class="toc-nav-text">页缓存</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#页缓存在RocketMQ的应用"><span class="toc-nav-text">页缓存在RocketMQ的应用</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#刷盘策略"><span class="toc-nav-text">刷盘策略</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Kafka的高性能写入"><span class="toc-nav-text">Kafka的高性能写入</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#页缓存技术-磁盘顺序写"><span class="toc-nav-text">页缓存技术 + 磁盘顺序写</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#为什么说Elastic-Search是准实时的搜索"><span class="toc-nav-text">为什么说Elastic Search是准实时的搜索</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#架构的设计思想，本质大同"><span class="toc-nav-text">架构的设计思想，本质大同</span></a></li></ol></li></ol>
     
   </div>
 </aside>
@@ -246,7 +261,7 @@
 
 <script>
   (function () {
-    var url = 'http://yoursite.com/2018/10/03/Java-ThreadPool-vs-Company/';
+    var url = 'http://yoursite.com/2019/03/17/About-OS-Page-Cache/';
     var banner = ''
     if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
       $('#article-banner').css({
@@ -302,7 +317,7 @@
     var gitmentConfig = "fgu123";
     if (gitmentConfig !== 'undefined') {
       var gitment = new Gitment({
-        id: "Java线程池类比公司经营之道",
+        id: "关于页缓存技术提高中间件读写性能的应用",
         owner: "fgu123",
         repo: "fgu123.github.io",
         oauth: {
@@ -330,7 +345,7 @@
 <script>
   var disqus_shortname = '';
   
-  var disqus_url = 'http://yoursite.com/2018/10/03/Java-ThreadPool-vs-Company/';
+  var disqus_url = 'http://yoursite.com/2019/03/17/About-OS-Page-Cache/';
   
   (function(){
     var dsq = document.createElement('script');

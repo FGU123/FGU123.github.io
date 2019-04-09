@@ -170,7 +170,8 @@
 </ol>
 <h2 id="概括每种I-O类型的过程"><a href="#概括每种I-O类型的过程" class="headerlink" title="概括每种I/O类型的过程"></a>概括每种I/O类型的过程</h2><p>OK，有了两阶段的概念后，可以简单来理解并总结每种I/O类型的过程:<br><img src="/images/post-IO-Types/20181120062926.jpg" alt=""></p>
 <p>一图胜千言：<br><img src="/images/post-IO-Types/20181121075237.jpg" alt=""></p>
-<h2 id="浅谈零拷贝"><a href="#浅谈零拷贝" class="headerlink" title="浅谈零拷贝"></a>浅谈零拷贝</h2><p>既然提到零拷贝，那就粗浅地说明一下：<br>零拷贝是指，减免了数据在内核空间和用户空间来回拷贝。<br><br><br>用户态程序调用mmap()，磁盘上的数据会通过DMA（直接内存存取，direct memory access）被拷贝的内核缓冲区，接着操作系统会把这段内核缓冲区与应用程序共享，这种所谓的共享，方式就是mmap（内存映射，memory map），这样就不需要把内核缓冲区的内容往用户空间拷贝。用户态程序再调用write()，操作系统直接将内核缓冲区的内容拷贝到socket缓冲区中，这一切都发生在内核态，最后，socket缓冲区再把数据发到网卡去。<br><br><br>好吧，一图胜千言：<br><img src="/images/post-IO-Types/20181120064306.jpg" alt=""></p>
+<h2 id="浅谈零拷贝"><a href="#浅谈零拷贝" class="headerlink" title="浅谈零拷贝"></a>浅谈零拷贝</h2><p>既然提到零拷贝，那就粗浅地说明一下：<br>零拷贝是指，减免了数据在内核空间和用户空间来回拷贝（无cpu copy过程）。<br><br><br>用户态程序调用mmap()，磁盘上的数据会通过DMA（直接内存存取，direct memory access，一种透过DMA控制器让内存与硬盘/网卡直接对接的IO技术，过程中无需依赖CPU的大量中断负载）被拷贝到内核缓冲区，接着操作系统会把这段内核缓冲区与应用程序共享，这种所谓的共享，方式就是mmap（内存映射，memory map），这样就不需要把内核缓冲区的内容往用户空间拷贝。用户态程序再调用write()，操作系统直接将内核缓冲区的内容拷贝到socket缓冲区中，这一切都发生在内核态，最后，socket缓冲区再把数据发到网卡去。<br><br><br>好吧，一图胜千言：<br><img src="/images/post-IO-Types/20181120064306.jpg" alt=""></p>
+<p>OK，上面所说的DMA技术直接让内存对接硬盘IO，以及mmap让用户程序共享内核缓冲区，都可以省掉内核空间与用户空间之间的cpu copy，但是还有个问题，就是内核与socket缓冲区之间是否也可以免掉一次CPU copy呢？借助于硬件上的帮助，我们是可以办到的。之前我们是把页缓存的数据拷贝到socket缓存中，实际上，我们仅仅需要把缓冲区描述符传到socket缓冲区，再把数据长度传过去，这样DMA控制器直接将页缓存中的数据打包发送到网络（网卡）中去就可以了。这样，就是可以实现真正的全程零CPU拷贝了。<br><img src="/images/post-IO-Types/20190409222209.jpg" alt=""></p>
 <h2 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h2><p>《UNIX网络编程》</p>
 <p><a href="https://www.jianshu.com/p/fad3339e3448" target="_blank" rel="noopener">浅析Linux中的零拷贝技术</a></p>
 </section>

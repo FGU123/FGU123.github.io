@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="ppxu&#39;s blog">
+  <meta name="keyword" content="java, blog, article">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      LRU Cache | PPXu
+    
+  </title>
+  <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/plugins/gitment.css">
+  <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
+  <script src="/js/qrious.js"></script>
+<script src="/js/gitment.js"></script>
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+</head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>PPXu</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/search" class="item-link">Search</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/search" class="menu-link">Search</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>LRU Cache</h2>
+  <p class="post-date">2019-04-20</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><p>记录，备忘…</p>
+<h1 id="LRU"><a href="#LRU" class="headerlink" title="LRU"></a>LRU</h1><p>LRU，即Least Recently Used（最近被使用得最少的），是一种常见的缓存淘汰策略，意思是把缓存中最久未被使用的值优先考虑淘汰。而基于这种淘汰策略的缓存就是所谓的LRU Cache。</p>
+<h1 id="LinkedHashMap–现成的LRU"><a href="#LinkedHashMap–现成的LRU" class="headerlink" title="LinkedHashMap–现成的LRU"></a>LinkedHashMap–现成的LRU</h1><p>Java中的LinkedHashMap，可以简单理解为LinkedList+HashMap，Java中的LinkedList为双向链表，可以维护一个逻辑，就是按一个方向把元素按一个维度来线性排序：表头总是指向当前最近访问的节点，表尾总是指向当前最久未被访问的节点，也就是LRU。</p>
+<h1 id="LinkedHashMap数据结构示意图"><a href="#LinkedHashMap数据结构示意图" class="headerlink" title="LinkedHashMap数据结构示意图"></a>LinkedHashMap数据结构示意图</h1><h2 id="从HashMap角度"><a href="#从HashMap角度" class="headerlink" title="从HashMap角度"></a>从HashMap角度</h2><p>基于HashMap角度看，就是加了双向指针的HashMap：<br><img src="/images/post-lrucache/20190421112238.png" alt=""></p>
+<h2 id="从LinkedList角度"><a href="#从LinkedList角度" class="headerlink" title="从LinkedList角度"></a>从LinkedList角度</h2><p>基于LinkedList角度看，可以简化为链表加上散列：<br><img src="/images/post-lrucache/20190421112209.png" alt=""></p>
+<h2 id="Entry节点"><a href="#Entry节点" class="headerlink" title="Entry节点"></a>Entry节点</h2><p><img src="/images/post-lrucache/‎20190‎4‎21‎142102.png" alt=""></p>
+<p><strong>以上仅仅是帮助理解的示意图，并非严谨数据结构图</strong></p>
+<h1 id="双向链表简单实现"><a href="#双向链表简单实现" class="headerlink" title="双向链表简单实现"></a>双向链表简单实现</h1><p>基于HashMap，再实现双向链表的基本操作：</p>
+<ul>
+<li>添加操作：由于是添加操作，就意味着可能出现容量不够，也就是链表已满，那么就要执行淘汰策略：删除最久未被访问的节点。</li>
+<li>删除操作：把指定节点移除掉，移除前需调整涉及到的各个指针的指向，包括当前节点的前节点的后指针、后节点的前指针，链表的头指针、尾指针。</li>
+<li>请求读取元素：<ul>
+<li>命中：更新表头指针，即把当前命中的节点作为头节点；</li>
+<li>未命中：如果是单纯只读操作，而又未命中，则不会引起任何变化。</li>
+</ul>
+</li>
+</ul>
+<p><br><a href="https://github.com/FGU123/LRU/blob/master/src/main/java/com/xu/tlab/service/impl/self/LRUCache.java" target="_blank" rel="noopener">LRUCache.java</a><br></p>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 自定义节点结构简单实现双向链表，节点包含前后双向指针，基于HashMap存储节点达到时间复杂度O(1)的目的，最差为O(1+s)，s为Map.size</span></span><br><span class="line"><span class="comment"> * 额外维护两个指针：链表的头、尾指针</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">LRUCache</span>&lt;<span class="title">K</span>, <span class="title">V</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">int</span> capacity = <span class="number">1</span> &lt;&lt; <span class="number">30</span>;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> Map&lt;K, Node&gt; map = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 头指针</span></span><br><span class="line">	<span class="keyword">private</span> Node head;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 尾指针</span></span><br><span class="line">	<span class="keyword">private</span> Node tail;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="title">LRUCache</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		map = <span class="keyword">new</span> HashMap&lt;K, Node&gt;( capacity );</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="title">LRUCache</span><span class="params">( <span class="keyword">int</span> capacity )</span> </span>&#123;</span><br><span class="line">		<span class="keyword">this</span>.capacity = capacity;</span><br><span class="line">		map = <span class="keyword">new</span> HashMap&lt;K, Node&gt;( capacity );</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/**</span></span><br><span class="line"><span class="comment">	 *  定义 节点的结构</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Node</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">private</span> K key;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">private</span> V value;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 前指针</span></span><br><span class="line">		<span class="keyword">private</span> Node prev;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 后指针</span></span><br><span class="line">		<span class="keyword">private</span> Node next;</span><br><span class="line"></span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">put</span><span class="params">( K key, V value )</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">		Node node = map.get( key );</span><br><span class="line">		<span class="keyword">if</span>( <span class="keyword">null</span> == node ) &#123;</span><br><span class="line">			node = <span class="keyword">new</span> Node();</span><br><span class="line">			node.key = key;</span><br><span class="line">		&#125;</span><br><span class="line">		node.value = value;</span><br><span class="line">		<span class="keyword">if</span>( removeEldest( node ) ) &#123;</span><br><span class="line">			removeTail();</span><br><span class="line">		&#125;</span><br><span class="line">		map.put( key, node );</span><br><span class="line">		moveToHead( node );</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * 定义成方法，让它可以开放出去，让使用者重写来自定义逻辑</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">protected</span> <span class="keyword">boolean</span> <span class="title">removeEldest</span><span class="params">( Node eldest )</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> map.size() &gt;= capacity;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">removeTail</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="keyword">if</span>( tail != <span class="keyword">null</span> ) &#123;</span><br><span class="line">			remove( tail );</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * 管好4个指针即可： 链表的头指针、尾指针，当前节点的前节点的后指针、后节点的前指针，</span></span><br><span class="line"><span class="comment">	 * 因为是当前节点是被删除的节点，所以自己的前后指针不需要管</span></span><br><span class="line"><span class="comment">	 *  </span></span><br><span class="line"><span class="comment">	 * 1. 如果当前节点是尾节点，把尾指针往前挪一个节点</span></span><br><span class="line"><span class="comment">	 * 2. 如果当前节点是头节点，把头指针往后挪一个节点</span></span><br><span class="line"><span class="comment">	 * 3. 如果当前节点的前指针不为空，前节点的后指针指向后节点</span></span><br><span class="line"><span class="comment">	 * 4. 如果当前节点的后指针不为空，后节点的前指针指向前节点</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">remove</span><span class="params">( Node node )</span> </span>&#123;</span><br><span class="line">		<span class="keyword">if</span>( tail == node ) &#123;</span><br><span class="line">			tail = tail.prev;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span>( head == node ) &#123;</span><br><span class="line">			head = head.next;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span>( node.prev != <span class="keyword">null</span> ) &#123;</span><br><span class="line">			node.prev.next = node.next;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span>( node.next != <span class="keyword">null</span> ) &#123;</span><br><span class="line">			node.next.prev = node.prev;</span><br><span class="line">		&#125;</span><br><span class="line">		map.remove( node.key );</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> V <span class="title">get</span><span class="params">( K key )</span> </span>&#123;</span><br><span class="line">		Node node = map.get( key );</span><br><span class="line">		<span class="keyword">if</span>( node != <span class="keyword">null</span> ) &#123;</span><br><span class="line">			moveToHead( node );</span><br><span class="line">			<span class="keyword">return</span> node.value;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * 管好最多6个指针即可： </span></span><br><span class="line"><span class="comment">	 * 链表的头指针(head)、尾指针(tail)，</span></span><br><span class="line"><span class="comment">	 * 被移位的节点的前节点的后指针(node.prev.next)、后节点的前指针(node.next.prev)，</span></span><br><span class="line"><span class="comment">	 * 被移位的节点自己的前后指针(node.prev，node.next) </span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">moveToHead</span><span class="params">( Node node )</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 头尾指针为空，说明在挪头操作之前，一个节点都没有，而当前节点为新增节点，则只需要把头尾指针都指向当前节点即可</span></span><br><span class="line">		<span class="keyword">if</span>( tail == <span class="keyword">null</span> || head == <span class="keyword">null</span> ) &#123;</span><br><span class="line">			head = tail = node;</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 如果当前节点已经为头节点，则啥也不需要做，直接返回</span></span><br><span class="line">		<span class="keyword">if</span>( head == node ) &#123;</span><br><span class="line">			<span class="keyword">return</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 如果当前节点是尾节点，则挪头操作后必然要把尾指针需要改为尾节点的上一个节点</span></span><br><span class="line">		<span class="keyword">if</span>( tail == node ) &#123;</span><br><span class="line">			tail = tail.prev;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 如果当前节点的前节点不为空，则把前节点的后指针指向当前节点的前节点</span></span><br><span class="line">		<span class="keyword">if</span>( node.prev != <span class="keyword">null</span> ) &#123;</span><br><span class="line">			node.prev.next = node.next;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 如果当前节点的后节点不为空，则把后节点的前指针指向当前节点的前节点</span></span><br><span class="line">		<span class="keyword">if</span>( node.next != <span class="keyword">null</span> ) &#123;</span><br><span class="line">			node.next.prev = node.prev;</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		<span class="comment">// 接下来是挪头操作：</span></span><br><span class="line">		<span class="comment">// 1. 前边已经判断过了头节点是存在的，那么把头节点的前指针由null指向为当前节点</span></span><br><span class="line">		<span class="comment">// 2. 当前节点的后指针指向头节点</span></span><br><span class="line">		<span class="comment">// 3. 当前节点的前指针指向null</span></span><br><span class="line">		<span class="comment">// 4. 头指针指向当前节点</span></span><br><span class="line">		head.prev = node;</span><br><span class="line">		node.next = head;</span><br><span class="line">		node.prev = <span class="keyword">null</span>;</span><br><span class="line">		head = node;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="为什么使用双向链表"><a href="#为什么使用双向链表" class="headerlink" title="为什么使用双向链表"></a>为什么使用双向链表</h1><h2 id="队列行不行？"><a href="#队列行不行？" class="headerlink" title="队列行不行？"></a>队列行不行？</h2><p>不行，队列只能做到先进先出，但是如果是访问排在中间的数据，此时无法把中间的数据移动到顶端。</p>
+<h2 id="单链表行不行？"><a href="#单链表行不行？" class="headerlink" title="单链表行不行？"></a>单链表行不行？</h2><p>如果用单链表，能保证实现最新或最热节点放到一侧，但是最久未被使用要放到另一侧，如果只有表头一个指针，那么获取尾节点，则需要从头指针一直到尾，遍历整个单链表，而双向链表同时还有尾指针，尾指针可以帮助直接定位到最后一个节点。更关键的是，在做移动/删除节点的操作的时候，当需要把当前节点的前节点的后指针指向为后节点时（node.prev.next=node.next），获取前节点的操作就只需要透过前指针获取即可，但如果是在单链表中，则需要进行更费时的遍历查找操作来获取到前节点。</p>
+<h1 id="为什么使用HashMap"><a href="#为什么使用HashMap" class="headerlink" title="为什么使用HashMap"></a>为什么使用HashMap</h1><p>HashMap是用于降低寻找节点的时间复杂度的。主要是因为可以快速定位（散列查找的最优时间复杂度是O(1)）。配合LinkedList，定位+移位节点的操作的效率变得更高。</p>
+<h1 id="线程安全"><a href="#线程安全" class="headerlink" title="线程安全"></a>线程安全</h1><p>为了保证Cache的读写在多线程下正确，也就是线程安全，最简单粗暴的就是给引起指针变化的操作及遍历操作全加锁。</p>
+</section>
+    <!-- Tags START -->
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2019/04/14/About-Netty/">
+        <span class="nav-arrow">← </span>
+        
+          关于Netty
+        
+      </a>
+    
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <!--<div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>-->
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- No Comment -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#LRU"><span class="toc-nav-text">LRU</span></a></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#LinkedHashMap–现成的LRU"><span class="toc-nav-text">LinkedHashMap–现成的LRU</span></a></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#LinkedHashMap数据结构示意图"><span class="toc-nav-text">LinkedHashMap数据结构示意图</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#从HashMap角度"><span class="toc-nav-text">从HashMap角度</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#从LinkedList角度"><span class="toc-nav-text">从LinkedList角度</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Entry节点"><span class="toc-nav-text">Entry节点</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#双向链表简单实现"><span class="toc-nav-text">双向链表简单实现</span></a></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#为什么使用双向链表"><span class="toc-nav-text">为什么使用双向链表</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#队列行不行？"><span class="toc-nav-text">队列行不行？</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#单链表行不行？"><span class="toc-nav-text">单链表行不行？</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#为什么使用HashMap"><span class="toc-nav-text">为什么使用HashMap</span></a></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#线程安全"><span class="toc-nav-text">线程安全</span></a></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'http://yoursite.com/2019/04/20/LRUCache/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+     // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', 'http://file.muyutech.com/error-img.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== 'http://file.muyutech.com/error-img.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+        
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+
+    // qrcode
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+
+    // gitment
+    var gitmentConfig = "fgu123";
+    if (gitmentConfig !== 'undefined') {
+      var gitment = new Gitment({
+        id: "LRU Cache",
+        owner: "fgu123",
+        repo: "fgu123.github.io",
+        oauth: {
+          client_id: "0f87e490e00ee3fd87ef",
+          client_secret: "4a9d2b148e7971c2201ad12131ce8bf8159ccd2e"
+        },
+        theme: {
+          render(state, instance) {
+            const container = document.createElement('div')
+            container.lang = "en-US"
+            container.className = 'gitment-container gitment-root-container'
+            container.appendChild(instance.renderHeader(state, instance))
+            container.appendChild(instance.renderEditor(state, instance))
+            container.appendChild(instance.renderComments(state, instance))
+            container.appendChild(instance.renderFooter(state, instance))
+            return container;
+          }
+        }
+      })
+      gitment.render(document.getElementById('comments'))
+    }
+  })();
+</script>
+
+<script>
+  var disqus_shortname = '';
+  
+  var disqus_url = 'http://yoursite.com/2019/04/20/LRUCache/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2019 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+<script src="/js/script.js"></script>
+  </body>
+</html>

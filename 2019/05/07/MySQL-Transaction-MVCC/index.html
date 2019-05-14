@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="ppxu&#39;s blog">
+  <meta name="keyword" content="java, blog, article">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      MySQL-Transaction-MVCC | PPXu
+    
+  </title>
+  <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/plugins/gitment.css">
+  <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
+  <script src="/js/qrious.js"></script>
+<script src="/js/gitment.js"></script>
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+</head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>PPXu</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/search" class="item-link">Search</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/search" class="menu-link">Search</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>MySQL-Transaction-MVCC</h2>
+  <p class="post-date">2019-05-07</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><h1 id="事务ACID"><a href="#事务ACID" class="headerlink" title="事务ACID"></a>事务ACID</h1><p>事务的四大特性，Atomicity(原子性), Consistency(一致性), Isolation(隔离性), Durability(持久性)。</p>
+<h2 id="A（原子性）"><a href="#A（原子性）" class="headerlink" title="A（原子性）"></a>A（原子性）</h2><p>一个事务的操作，要么全部执行，要么全部不执行。</p>
+<h2 id="C（一致性）"><a href="#C（一致性）" class="headerlink" title="C（一致性）"></a>C（一致性）</h2><p>事务总是从一个一致的状态转换到另一个一致的状态。在事务开始之前和结束之后，数据库的完整性约束没有被破坏。</p>
+<h2 id="I（隔离性）"><a href="#I（隔离性）" class="headerlink" title="I（隔离性）"></a>I（隔离性）</h2><p>隔离性决定了一个事务的修改结果在什么时候能够被其他事务看到。隔离性的概念，离不开并发控制（concurrency control）、可串行化（serializability）、锁（lock）等概念。</p>
+<h2 id="D（持久性）"><a href="#D（持久性）" class="headerlink" title="D（持久性）"></a>D（持久性）</h2><p>事务一旦提交，所有的变化都是永久的，即使发生宕机等故障，数据库也能将数据恢复。持久性保证的是事务系统的高可靠性，而非高可用。事务本身并不保证高可用性，需要一些系统共同配合来完成。</p>
+<h2 id="事务特性的实现"><a href="#事务特性的实现" class="headerlink" title="事务特性的实现"></a>事务特性的实现</h2><p>MySQL事务的原子性和持久性，靠redo log实现，redo log称为重做日志，通常是物理日志，记录的是页的物理修改操作。<br>一致性则用undo log来保证，undo log是回滚日志，是逻辑日志，根据每行纪录进行记录。<br>两种日志的作用都可以视为一种恢复操作，redo恢复的是提交事务修改的页操作，而undo回滚行记录到某个特定的版本。</p>
+<h1 id="隔离级别"><a href="#隔离级别" class="headerlink" title="隔离级别"></a>隔离级别</h1><p>SQL标准定义的四个隔离级别：</p>
+<ul>
+<li><p>Read Uncommitted（读未提交，RU）<br>可以读到其它未提交事务导致的数据变更。最低的隔离级别，存在脏读的问题。</p>
+</li>
+<li><p>Read Committed（读已提交，RC）<br>可以读到已提交的事务导致的数据变更，解决了RU的脏读问题，但存在不可重复读的问题。</p>
+</li>
+<li><p>Repeatable Read（可重复读，RR）<br>InnoDB存储引擎默认支持的隔离级别便是Repeatable Read。可重复读，解决了RC的不可重复读问题，但也可能存在幻读的问题。InnoDB在RR级别下，使用Next-Key Lock算法，可以避免幻读的产生，所以说，在RR级别下已经能完全保证事务的最高隔离性要求，也就是以下的Serializable级别。</p>
+</li>
+<li><p>Serializable（串行化）<br>最高的隔离级别，事务间串行化操作，可以理解为事务间无并发。</p>
+</li>
+</ul>
+<p>隔离级别由上至下依次为越来越高，而隔离级别越低则事务请求的锁就越少，或者锁保持的时间就越短。这就是为何大多数数据库系统默认的事务隔离级别是Read Committed（读已提交）。</p>
+<h1 id="并发控制"><a href="#并发控制" class="headerlink" title="并发控制"></a>并发控制</h1><p>并发的任务对同一个临界资源进行操作，如果不采取措施，可能导致不一致，故必须进行并发控制(Concurrency Control)。</p>
+<h1 id="锁"><a href="#锁" class="headerlink" title="锁"></a>锁</h1><p>如Java中的锁一样，利用普通锁的互斥性是保证一致性的常用手段，本质上一种串行化的执行过程。<br>普通的锁，体现的是独占性：</p>
+<blockquote>
+<ul>
+<li>操作数据前，锁住，实施互斥，不允许其他的并发任务操作;</li>
+<li>操作完成后，释放锁，让其他任务执行;</li>
+</ul>
+</blockquote>
+<p>这种方式简单粗暴，但性能上可以有优化的空间，于是，出现新的锁种类：</p>
+<blockquote>
+<ul>
+<li>共享锁(Share Locks，记为S锁)，读取数据时加S锁</li>
+<li>排他锁(eXclusive Locks，记为X锁)，修改数据时加X锁</li>
+</ul>
+</blockquote>
+<p>共享锁之间不互斥，也就是：读读可并行<br>排他锁与任何锁都互斥，也就是：写读、写写都不可并行</p>
+<p>排他锁的劣在于，一旦有写，对读也存在串行化的影响，没法提高并发。而事实上可以优化，读可以不受写阻塞。数据多版本就是为了提高并发的一种优化手段。</p>
+<h1 id="数据多版本"><a href="#数据多版本" class="headerlink" title="数据多版本"></a>数据多版本</h1><p>核心原理在于：读与写操作的数据，副本隔离不一致</p>
+<ul>
+<li>写任务发生时，将数据克隆一份，以版本号区分;</li>
+<li>写任务操作新克隆的数据，直至提交;</li>
+<li>并发读任务可以继续读取旧版本的数据，不至于阻塞;</li>
+</ul>
+<p><b>基于同一个初始版本v0，写任务将克隆一份数据副本，进行修改，修改后的数据视为新版本v1，但写任务未提交前，所有读任务都读取初始版本v0，不会受写任务阻塞。</b></p>
+<p>提高并发的演进思路，就在于此：</p>
+<p>普通锁，本质是串行执行<br>读写锁，可以实现读读并发<br>数据多版本，可以实现读写并发</p>
+<h2 id="Redo-log的必要性"><a href="#Redo-log的必要性" class="headerlink" title="Redo log的必要性"></a>Redo log的必要性</h2><p>Redo log用于实现事务的持久性（ACID里的D）。数据库事务提交后，必须将更新后的数据刷到磁盘上，以保证ACID特性。但这种数据落盘的方式，是随机写，性能较低，如果每次数据落盘都立马操作这种随机写，便会影响吞吐量。于是，默认通过“提交时强制写日志”（Force Log at Commit）的机制进行优化（当然，也可以设置为不强制写日志），<b>也就是说，必须在将事务的数据变更行为记入redo log并进行日志持久化后，再等事务的commit操作完成后，这才算事务完成。</b></p>
+<p>Redo log记录的两个阶段分别是：</p>
+<ol>
+<li>先写入文件缓存 </li>
+<li>后必须进行一次fsync操作（确保持久化）</li>
+</ol>
+<p>日志的写入采取文件末尾追加的方式，也就是顺序写，而后再定期（较短的时间间隔）fsync落盘，<b>顺序写比之随机写，性能得到大大的提升</b>。</p>
+<p>假如某一时刻，数据库崩溃，还没来得及刷盘的数据，在数据库重启后，会重做redo日志文件里的内容，以保证已提交事务对数据产生的影响都刷到磁盘上。</p>
+<h2 id="Undo-log的必要性"><a href="#Undo-log的必要性" class="headerlink" title="Undo log的必要性"></a>Undo log的必要性</h2><p>Undo log用以保证原子性（A）与一致性（C），以及配合实现innoDB的MVCC机制。</p>
+<p>数据库事务未提交时，会将事务修改数据的镜像(即修改前的旧版本)存放到undo日志里，当事务回滚时，或者数据库奔溃时，可以利用undo日志，即旧版本数据，撤销未提交事务对数据库产生的影响。</p>
+<blockquote>
+<p>对于insert操作，undo日志记录新数据的PK(ROW_ID)，回滚时直接删除;<br>对于delete/update操作，undo日志记录旧数据row，回滚时直接恢复</p>
+</blockquote>
+<p>而两类操作存放数据的buffer是不同的。除了回滚操作，undo的另一作用便是为MVCC机制提供数据的历史版本回溯。</p>
+<p><b>PS：为什么说undo log是逻辑日志？</b><br>Undo log的回滚机制，只是保证所有数据变更行为被逻辑上取消了，也就是根据undo log找到数据变更行为，把对应的逆反行为执行上，即成功回滚。<b>对于每个delete行为，则执行insert作回滚；每个update，则执行相反的update把数据恢复回去；而每个insert，则执行delete</b>，但是这样并不会把物理存储结构的变化给变更回去，譬如，用户执行了insert 10W条记录的一个事务，会导致表空间增大，但在rollback完成后，仅仅是表数据记录回滚，表空间的大小并不会因此而收缩。<b>而为了保证undo log的持久性，undo log的写入操作也会引发redo log的产生。</b></p>
+<h1 id="多版本并发控制（MVCC）"><a href="#多版本并发控制（MVCC）" class="headerlink" title="多版本并发控制（MVCC）"></a>多版本并发控制（MVCC）</h1><h2 id="回溯到数据历史版本"><a href="#回溯到数据历史版本" class="headerlink" title="回溯到数据历史版本"></a>回溯到数据历史版本</h2><p>首先InnoDB每一行数据还有一个DB_ROLL_PT的回滚指针，用于指向该行修改前的上一个历史版本。<br>事实上，MySQL给每行数据添加了三个隐藏字段，分别是该行的隐式行ID（DB_ROW_ID），事务号（DB_TRX_ID）和上述的回滚指针。<br><img src="/images/post-mysql-transaction-mvcc/2019‎05‎15‎0‏‎73339.png" alt=""></p>
+<p>当插入一条新数据时，记录上对应的回滚指针为NULL，表明没有历史版本。</p>
+<p><img src="/images/post-mysql-transaction-mvcc/2019‎05‎15‎0‏‎70926.png" alt=""><br>更新记录时，原记录将被放入到undo表空间中，并通过DB_ROLL_PT指向该记录。session2查询返回的未修改数据就是从这个undo中返回的。MySQL就是根据记录上的回滚段指针及事务ID判断记录是否可见，如果不可见继续按照DB_ROLL_PT继续回溯查找。</p>
+<h2 id="Read-View判断行记录是否可见"><a href="#Read-View判断行记录是否可见" class="headerlink" title="Read View判断行记录是否可见"></a>Read View判断行记录是否可见</h2><p>Read View用来判断是否为当前执行事务所见，从而达到对事务之间的数据可见性控制。<br>当开始一个事务或者每个查询语句执行时，把当前系统中活动的事务的ID都拷贝到一个列表，这个列表中最早的事务ID是tmin，最晚的事务ID为tmax，这个列表为Read View。当读到一行数据时，该行上面当前事务ID（DB_TRX_ID）记为tid0（也就是最后一次对数据进行修改的事务的ID），当前行数据是否可见的判断逻辑如图：<br><img src="/images/post-mysql-transaction-mvcc/2019‎05‎07‎013537.png" alt=""></p>
+<blockquote>
+<p>READ COMMITTED<br>事务内的每个查询语句执行时都会重新创建Read View，这样就会产生不可重复的现象。</p>
+</blockquote>
+<blockquote>
+<p>REPEATABLE READ<br>事务开始时创建Read View，在事务结束这段时间内，每一次查询都不会重新创建Read View，从而实现了可重复读。</p>
+</blockquote>
+<h2 id="InnoDB为何能够支持高并发"><a href="#InnoDB为何能够支持高并发" class="headerlink" title="InnoDB为何能够支持高并发"></a>InnoDB为何能够支持高并发</h2><p>回滚段里的数据，其实是历史数据的快照(snapshot)，这些数据是不会被修改，select可以肆无忌惮的并发读取他们。</p>
+<p>快照读(Snapshot Read)，这种一致性不加锁的读(Consistent Nonlocking Read)，就是InnoDB并发如此之高的核心原因之一。</p>
+<p>这里的一致性是指，事务读取到的数据，要么是事务开始前就已经存在的数据(当然，是其他已提交事务产生的)，要么是事务自身插入或者修改的数据。</p>
+<p>普通的select语句都是快照读，显式加锁（select for update/select lock in share mode）的select语句不属于快照读。</p>
+</section>
+    <!-- Tags START -->
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2019/04/22/AOP/">
+        <span class="nav-arrow">← </span>
+        
+          AOP
+        
+      </a>
+    
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <!--<div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>-->
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- No Comment -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#事务ACID"><span class="toc-nav-text">事务ACID</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#A（原子性）"><span class="toc-nav-text">A（原子性）</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#C（一致性）"><span class="toc-nav-text">C（一致性）</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#I（隔离性）"><span class="toc-nav-text">I（隔离性）</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#D（持久性）"><span class="toc-nav-text">D（持久性）</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#事务特性的实现"><span class="toc-nav-text">事务特性的实现</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#隔离级别"><span class="toc-nav-text">隔离级别</span></a></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#并发控制"><span class="toc-nav-text">并发控制</span></a></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#锁"><span class="toc-nav-text">锁</span></a></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#数据多版本"><span class="toc-nav-text">数据多版本</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Redo-log的必要性"><span class="toc-nav-text">Redo log的必要性</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Undo-log的必要性"><span class="toc-nav-text">Undo log的必要性</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#多版本并发控制（MVCC）"><span class="toc-nav-text">多版本并发控制（MVCC）</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#回溯到数据历史版本"><span class="toc-nav-text">回溯到数据历史版本</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Read-View判断行记录是否可见"><span class="toc-nav-text">Read View判断行记录是否可见</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#InnoDB为何能够支持高并发"><span class="toc-nav-text">InnoDB为何能够支持高并发</span></a></li></ol></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'http://yoursite.com/2019/05/07/MySQL-Transaction-MVCC/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+     // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', 'http://file.muyutech.com/error-img.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== 'http://file.muyutech.com/error-img.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+        
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+
+    // qrcode
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+
+    // gitment
+    var gitmentConfig = "fgu123";
+    if (gitmentConfig !== 'undefined') {
+      var gitment = new Gitment({
+        id: "MySQL-Transaction-MVCC",
+        owner: "fgu123",
+        repo: "fgu123.github.io",
+        oauth: {
+          client_id: "0f87e490e00ee3fd87ef",
+          client_secret: "4a9d2b148e7971c2201ad12131ce8bf8159ccd2e"
+        },
+        theme: {
+          render(state, instance) {
+            const container = document.createElement('div')
+            container.lang = "en-US"
+            container.className = 'gitment-container gitment-root-container'
+            container.appendChild(instance.renderHeader(state, instance))
+            container.appendChild(instance.renderEditor(state, instance))
+            container.appendChild(instance.renderComments(state, instance))
+            container.appendChild(instance.renderFooter(state, instance))
+            return container;
+          }
+        }
+      })
+      gitment.render(document.getElementById('comments'))
+    }
+  })();
+</script>
+
+<script>
+  var disqus_shortname = '';
+  
+  var disqus_url = 'http://yoursite.com/2019/05/07/MySQL-Transaction-MVCC/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2019 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+<script src="/js/script.js"></script>
+  </body>
+</html>

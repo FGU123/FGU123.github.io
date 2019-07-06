@@ -10,7 +10,7 @@
   
   <title>
     
-      RocketMQ-Debug-Environment | PPXu
+      RocketMQ调试环境配置 | PPXu
     
   </title>
   <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -138,7 +138,7 @@
 </header>
 
     <div id="article-banner">
-  <h2>RocketMQ-Debug-Environment</h2>
+  <h2>RocketMQ调试环境配置</h2>
   <p class="post-date">2019-05-18</p>
   <div class="arrow-down">
     <a href="javascript:;"></a>
@@ -193,7 +193,7 @@
 <h1 id="启动-Consumer"><a href="#启动-Consumer" class="headerlink" title="启动 Consumer"></a>启动 Consumer</h1><p>打开 org.apache.rocketmq.example.quickstart.Consumer 示例类，代码如下：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Consumer</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, MQClientException </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Instantiate with specified consumer group name.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        DefaultMQPushConsumer consumer = <span class="keyword">new</span> DefaultMQPushConsumer(<span class="string">"please_rename_unique_group_name_4"</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Specify name server addresses.</span></span><br><span class="line"><span class="comment">         * &lt;p/&gt;</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * Alternatively, you may specify name server addresses via exporting environmental variable: NAMESRV_ADDR</span></span><br><span class="line"><span class="comment">         * &lt;pre&gt;</span></span><br><span class="line"><span class="comment">         * &#123;@code</span></span><br><span class="line"><span class="comment">         * consumer.setNamesrvAddr("name-server1-ip:9876;name-server2-ip:9876");</span></span><br><span class="line"><span class="comment">         * &#125;</span></span><br><span class="line"><span class="comment">         * &lt;/pre&gt;</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Specify where to start in case the specified consumer group is a brand new one.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        consumer.setNamesrvAddr(<span class="string">"127.0.0.1:9876"</span>); <span class="comment">// 设定 Namesrv 的地址与端口</span></span><br><span class="line">        consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Subscribe one more more topics to consume.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        consumer.subscribe(<span class="string">"TopicTest"</span>, <span class="string">"*"</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         *  Register callback to execute on arrival of messages fetched from brokers.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        consumer.registerMessageListener(<span class="keyword">new</span> MessageListenerConcurrently() &#123;</span><br><span class="line"></span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> ConsumeConcurrentlyStatus <span class="title">consumeMessage</span><span class="params">(List&lt;MessageExt&gt; msgs,</span></span></span><br><span class="line"><span class="function"><span class="params">                ConsumeConcurrentlyContext context)</span> </span>&#123;</span><br><span class="line">                System.out.printf(<span class="string">"%s Receive New Messages: %s %n"</span>, Thread.currentThread().getName(), msgs);</span><br><span class="line">                <span class="keyword">return</span> ConsumeConcurrentlyStatus.CONSUME_SUCCESS;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         *  Launch the consumer instance.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        consumer.start();</span><br><span class="line"></span><br><span class="line">        System.out.printf(<span class="string">"Consumer Started.%n"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <p>在 25 行，我们还增加了 consumer.setNamesrvAddr(“127.0.0.1:9876”) 代码块，指明 Consumer 使用的 RocketMQ Namesrv 。</p>
 <p>然后，右键运行，RocketMQ Consumer 就启动完成。输入日志如下：</p>
-<figure class="highlight console"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">16:17:20.362 [main] DEBUG i.n.u.i.l.InternalLoggerFactory - Using SLF4J as the default logging framework</span><br><span class="line">Consumer Started.</span><br></pre></td></tr></table></figure>
+<figure class="highlight console"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">08:17:20.362 [main] DEBUG i.n.u.i.l.InternalLoggerFactory - Using SLF4J as the default logging framework</span><br><span class="line">Consumer Started.</span><br></pre></td></tr></table></figure>
 <p><b style="color:orange">如有消息堆积，则会在启动时刷刷出现消费消息的日志</b><br><b>再来一问，这里为何指定的不是Broker，而是Namesrv？</b></p>
 </section>
     <!-- Tags START -->
@@ -264,7 +264,7 @@
 
 <script>
   (function () {
-    var url = 'http://yoursite.com/2019/05/18/RocketMQ-Design-Analysis/';
+    var url = 'http://yoursite.com/2019/05/18/RocketMQ-Debug-Environment/';
     var banner = ''
     if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
       $('#article-banner').css({
@@ -320,7 +320,7 @@
     var gitmentConfig = "fgu123";
     if (gitmentConfig !== 'undefined') {
       var gitment = new Gitment({
-        id: "RocketMQ-Debug-Environment",
+        id: "RocketMQ调试环境配置",
         owner: "fgu123",
         repo: "fgu123.github.io",
         oauth: {
@@ -348,7 +348,7 @@
 <script>
   var disqus_shortname = '';
   
-  var disqus_url = 'http://yoursite.com/2019/05/18/RocketMQ-Design-Analysis/';
+  var disqus_url = 'http://yoursite.com/2019/05/18/RocketMQ-Debug-Environment/';
   
   (function(){
     var dsq = document.createElement('script');

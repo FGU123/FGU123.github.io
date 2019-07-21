@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="ppxu&#39;s blog">
+  <meta name="keyword" content="java, blog, article">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      RocketMQ调试环境配置 | PPXu
+    
+  </title>
+  <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/plugins/gitment.css">
+  <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
+  <script src="/js/qrious.js"></script>
+<script src="/js/gitment.js"></script>
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+</head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>PPXu</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/search" class="item-link">Search</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/search" class="menu-link">Search</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>RocketMQ调试环境配置</h2>
+  <p class="post-date">2019-05-18</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><h1 id="调试环境及工具"><a href="#调试环境及工具" class="headerlink" title="调试环境及工具"></a>调试环境及工具</h1><ol>
+<li>JDK 1.8+</li>
+<li>Maven</li>
+<li>IDE工具（Eclipse/IntelliJ IDEA）</li>
+</ol>
+<h2 id="拉取源码"><a href="#拉取源码" class="headerlink" title="拉取源码"></a>拉取源码</h2><p>RocketMQ的官方仓库 <a href="https://github.com/apache/rocketmq" target="_blank" rel="noopener">https://github.com/apache/rocketmq</a> ，为方便调试，可以 Fork 出属于自己的仓库。<br>使用Eclipse从仓库里拉取代码。拉取并以Maven项目形式导入IDE工具，完成后，Maven会自动下载依赖包。</p>
+<p>搭建之前先来一张RocketMQ物理部署架构图（集群）：<br><img src="/images/post-RocketMQ-environment/20190518080010.png" alt=""></p>
+<p><b style="color:orange">下文只介绍最小化的RocketMQ环境部署，暂时不考虑Namesrv集群、Broker集群、Comsumer集群。</b><br>本文所涉及RocketMQ源码基于 4.5.1 版本（master分支）。<br>搭建调试环境的过程：</p>
+<ol>
+<li>启动 RocketMQ Namesrv （元数据管理，Broker、Producer、Consumer各组件的服务注册与发现）</li>
+<li>启动 RocketMQ Broker （真正意义上的MQ服务端，接收消息、推送消费）</li>
+<li>启动 RocketMQ Producer （消息生产者，发送消息至Broker）</li>
+<li>启动 RocketMQ Consumer （消息消费者，消费Broker推送过来的消息）</li>
+</ol>
+<p>消息服务端（Namesrv及Broker）的启动方式：</p>
+<ol>
+<li>配置文件方式（配置文件多，路径多，配置项多而繁琐，不推荐×）</li>
+<li>代码启动方式（代码简单可控，推荐√）</li>
+</ol>
+<h1 id="启动Namesrv"><a href="#启动Namesrv" class="headerlink" title="启动Namesrv"></a>启动Namesrv</h1><h2 id="配置文件方式"><a href="#配置文件方式" class="headerlink" title="配置文件方式"></a>配置文件方式</h2><p>以Eclipse为例简单说明一下，以配置文件方式来启动Namesrv模块</p>
+<ol>
+<li>打开namesrv模块下的NamesrvStartup.java，选择Debug As，配置Debug Configuration，弹出De bug Configuration s 对话框。</li>
+<li>选中Java Application 条目并单击右键，选择New 弹出Debug Configurations 对话框</li>
+<li>设置RocketMQ 运行主目录。选择Environment 选项卡，添加环境变量ROCKET_HOME</li>
+<li>在RocketMQ 运行主目录中创建conf 、logs 、store 三个文件夹<br><img src="/images/post-RocketMQ-environment/20190518081143.png" alt=""></li>
+<li>从RocketMQ distribution 部署目录中将broker.conf、logback_ broker.xml 文件复制到conf 目录中， logback_ namesrv.xml 文件则只需修改日志文件的目录， broker.conf 文件内容如下所示。定义一个自己的RocketMQ store目录路径，替换即可。<br><img src="/images/post-RocketMQ-environment/20190518081320.png" alt=""></li>
+<li>在Eclipse Debug 中运行NamesrvStartup ，并输出“ The Name Server boot success.Serializetype=JSON ” 。</li>
+</ol>
+<h2 id="代码启动方式（推荐√）"><a href="#代码启动方式（推荐√）" class="headerlink" title="代码启动方式（推荐√）"></a>代码启动方式（推荐√）</h2><p>打开 org.apache.rocketmq.namesrv.NameServerInstanceTest 单元测试类，参考 #startup() 方法，我们编写一个自己的启动器，NamesrvStarter， 包含 #main(String[] args) 静态方法，代码如下：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">    <span class="comment">// NamesrvConfig 配置</span></span><br><span class="line">    <span class="keyword">final</span> NamesrvConfig namesrvConfig = <span class="keyword">new</span> NamesrvConfig();</span><br><span class="line">    <span class="comment">// NettyServerConfig 配置</span></span><br><span class="line">    <span class="keyword">final</span> NettyServerConfig nettyServerConfig = <span class="keyword">new</span> NettyServerConfig();</span><br><span class="line">    nettyServerConfig.setListenPort(<span class="number">9876</span>); <span class="comment">// 设置端口，不设置的话默认9876端口</span></span><br><span class="line">    <span class="comment">// 创建 NamesrvController 对象，并启动</span></span><br><span class="line">    NamesrvController namesrvController = <span class="keyword">new</span> NamesrvController(namesrvConfig, nettyServerConfig);</span><br><span class="line">    namesrvController.initialize();</span><br><span class="line">    namesrvController.start();</span><br><span class="line">    <span class="comment">// 休眠1天，一直hold住线程不退出</span></span><br><span class="line">    Thread.sleep(DateUtils.MILLIS_PER_DAY);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>核心配置均在代码里体现，右键运行，RocketMQ Namesrv 就启动完成。输出日志如下：<br><figure class="highlight console"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">07:54:03.354 [NettyEventExecutor] INFO  RocketmqRemoting - NettyEventExecutor service started</span><br><span class="line">07:54:03.355 [FileWatchService] INFO  RocketmqCommon - FileWatchService service started</span><br></pre></td></tr></table></figure></p>
+<h1 id="启动Broker"><a href="#启动Broker" class="headerlink" title="启动Broker"></a>启动Broker</h1><h2 id="配置文件方式-1"><a href="#配置文件方式-1" class="headerlink" title="配置文件方式"></a>配置文件方式</h2><p>以Eclipse为例简单说明一下，以配置文件方式来启动 Broker 模块</p>
+<ol>
+<li>打开BrokerStartup.java，移动到Debug As ，选中Debug Configurations ，在弹出的对话框，选择arguments 选项卡，配置 -c 属性指定 broker 配置文件路径。<br><img src="/images/post-RocketMQ-environment/20190518081402.png" alt=""></li>
+<li>切换选项卡Environment ，配置RocketMQ 主目录。<br><img src="/images/post-RocketMQ-environment/20190518081418.png" alt=""></li>
+<li>以Debug 模式运行BrokerStartup.java ，查看${ROCKET_HOME} /logs/ broker.log 文件，没报错则表示启动成功。</li>
+</ol>
+<h2 id="代码启动方式（推荐√）-1"><a href="#代码启动方式（推荐√）-1" class="headerlink" title="代码启动方式（推荐√）"></a>代码启动方式（推荐√）</h2><p>打开 org.apache.rocketmq.broker.BrokerControllerTest 单元测试类，参考 #testBrokerRestart() 方法，我们编写一个BrokerStarter类，包含#main(String[] args) 方法，代码如下：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">    <span class="comment">// 设置版本号</span></span><br><span class="line">    System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));</span><br><span class="line">    <span class="comment">// NettyServerConfig 配置</span></span><br><span class="line">    <span class="keyword">final</span> NettyServerConfig nettyServerConfig = <span class="keyword">new</span> NettyServerConfig();</span><br><span class="line">    nettyServerConfig.setListenPort(<span class="number">10911</span>);</span><br><span class="line">    <span class="comment">// BrokerConfig 配置</span></span><br><span class="line">    <span class="keyword">final</span> BrokerConfig brokerConfig = <span class="keyword">new</span> BrokerConfig();</span><br><span class="line">    brokerConfig.setBrokerName(<span class="string">"broker-a"</span>);</span><br><span class="line">    brokerConfig.setNamesrvAddr(<span class="string">"127.0.0.1:9876"</span>);</span><br><span class="line">    <span class="comment">// MessageStoreConfig 配置</span></span><br><span class="line">    <span class="keyword">final</span> MessageStoreConfig messageStoreConfig = <span class="keyword">new</span> MessageStoreConfig();</span><br><span class="line">    messageStoreConfig.setDeleteWhen(<span class="string">"04"</span>);</span><br><span class="line">    messageStoreConfig.setFileReservedTime(<span class="number">48</span>);</span><br><span class="line">    messageStoreConfig.setFlushDiskType(FlushDiskType.ASYNC_FLUSH);</span><br><span class="line">    messageStoreConfig.setDuplicationEnable(<span class="keyword">false</span>);</span><br><span class="line"></span><br><span class="line">	BrokerPathConfigHelper.setBrokerConfigPath(<span class="string">"D:/Users/xieruxu669/rockemq/conf/broker.conf"</span>); <span class="comment">// 指定broker配置文件的路径</span></span><br><span class="line">    <span class="comment">// 创建 BrokerController 对象，并启动</span></span><br><span class="line">    BrokerController brokerController = <span class="keyword">new</span> BrokerController(<span class="comment">//</span></span><br><span class="line">            brokerConfig, <span class="comment">//</span></span><br><span class="line">            nettyServerConfig, <span class="comment">//</span></span><br><span class="line">            <span class="keyword">new</span> NettyClientConfig(), <span class="comment">//</span></span><br><span class="line">            messageStoreConfig);</span><br><span class="line">    brokerController.initialize();</span><br><span class="line">    brokerController.start();</span><br><span class="line">    <span class="comment">// 休眠1天，一直hold住线程不退出持续1天</span></span><br><span class="line">    System.out.println(<span class="string">"Broker started...休眠1天"</span>);</span><br><span class="line">    Thread.sleep(DateUtils.MILLIS_PER_DAY);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>然后，右键运行，RocketMQ Broker 就启动完成了。输出日志如下：<br><figure class="highlight console"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Broker started...休眠1天</span><br></pre></td></tr></table></figure></p>
+<p>莫惊讶，Broker启动过程其实是没有自己的INFO日志的，但是，Broker起来必然会到Namesrv上面注册，所以，打开Namesrv的控制台，会看到输出如下日志：<br><figure class="highlight console"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">07:57:55.033 [NettyServerCodecThread_1] INFO  RocketmqRemoting - NETTY SERVER PIPELINE: channelRegistered 127.0.0.1:2597</span><br><span class="line">07:57:55.035 [NettyServerCodecThread_1] INFO  RocketmqRemoting - NETTY SERVER PIPELINE: channelActive, the channel[127.0.0.1:2597]</span><br><span class="line">07:57:55.231 [RemotingExecutorThread_1] DEBUG RocketmqNamesrv - receive request, 103 127.0.0.1:2597 RemotingCommand [code=103, language=JAVA, version=315, opaque=0, flag(B)=0, remark=null, extFields=&#123;brokerId=0, bodyCrc32=1180178866, clusterName=DefaultCluster, brokerAddr=10.188.32.24:10911, haServerAddr=10.188.32.24:10912, compressed=false, brokerName=broker-a&#125;, serializeTypeCurrentRPC=JSON]</span><br><span class="line">07:57:55.263 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new topic registered, %RETRY%please_rename_unique_group_name_4 QueueData [brokerName=broker-a, readQueueNums=1, writeQueueNums=1, perm=6, topicSynFlag=0]</span><br><span class="line">07:57:55.264 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new topic registered, BenchmarkTest QueueData [brokerName=broker-a, readQueueNums=1024, writeQueueNums=1024, perm=6, topicSynFlag=0]</span><br><span class="line">07:57:55.264 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new topic registered, OFFSET_MOVED_EVENT QueueData [brokerName=broker-a, readQueueNums=1, writeQueueNums=1, perm=6, topicSynFlag=0]</span><br><span class="line">07:57:55.264 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new topic registered, TopicTest QueueData [brokerName=broker-a, readQueueNums=4, writeQueueNums=4, perm=6, topicSynFlag=0]</span><br><span class="line">07:57:55.264 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new topic registered, broker-a QueueData [brokerName=broker-a, readQueueNums=1, writeQueueNums=1, perm=7, topicSynFlag=0]</span><br><span class="line">07:57:55.264 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new topic registered, TBW102 QueueData [brokerName=broker-a, readQueueNums=8, writeQueueNums=8, perm=7, topicSynFlag=0]</span><br><span class="line">07:57:55.265 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new topic registered, SELF_TEST_TOPIC QueueData [brokerName=broker-a, readQueueNums=1, writeQueueNums=1, perm=6, topicSynFlag=0]</span><br><span class="line">07:57:55.266 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new topic registered, DefaultCluster QueueData [brokerName=broker-a, readQueueNums=16, writeQueueNums=16, perm=7, topicSynFlag=0]</span><br><span class="line">07:57:55.270 [RemotingExecutorThread_1] INFO  RocketmqNamesrv - new broker registered, 10.188.32.24:10911 HAServer: 10.188.32.24:10912b</span><br></pre></td></tr></table></figure></p>
+<p><b>new broker registered, 10.188.32.24:10911 HAServer: 10.188.32.24:10912b</b> 这说明，Broker已经注册到了Namesrv上，也就是妥妥滴起来了。</p>
+<p>可以用telnet命令测试一下连接端口<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">telnet 127.0.0.1 10911</span><br></pre></td></tr></table></figure></p>
+<h1 id="启动-Producer"><a href="#启动-Producer" class="headerlink" title="启动 Producer"></a>启动 Producer</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * This class demonstrates how to send messages to brokers using provided &#123;<span class="doctag">@link</span> DefaultMQProducer&#125;.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Producer</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> MQClientException, InterruptedException </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Instantiate with a producer group name.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        DefaultMQProducer producer = <span class="keyword">new</span> DefaultMQProducer(<span class="string">"please_rename_unique_group_name"</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Specify name server addresses.</span></span><br><span class="line"><span class="comment">         * &lt;p/&gt;</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * Alternatively, you may specify name server addresses via exporting environmental variable: NAMESRV_ADDR</span></span><br><span class="line"><span class="comment">         * &lt;pre&gt;</span></span><br><span class="line"><span class="comment">         * &#123;@code</span></span><br><span class="line"><span class="comment">         * producer.setNamesrvAddr("name-server1-ip:9876;name-server2-ip:9876");</span></span><br><span class="line"><span class="comment">         * &#125;</span></span><br><span class="line"><span class="comment">         * &lt;/pre&gt;</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Launch the instance.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        producer.setNamesrvAddr(<span class="string">"127.0.0.1:9876"</span>); <span class="comment">// 设定 Namesrv 的地址与端口</span></span><br><span class="line">        producer.start();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; <span class="number">1000</span>; i++) &#123;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line"></span><br><span class="line">                <span class="comment">/*</span></span><br><span class="line"><span class="comment">                 * Create a message instance, specifying topic, tag and message body.</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                Message msg = <span class="keyword">new</span> Message(<span class="string">"TopicTest"</span> <span class="comment">/* Topic */</span>,</span><br><span class="line">                    <span class="string">"TagA"</span> <span class="comment">/* Tag */</span>,</span><br><span class="line">                    (<span class="string">"Hello RocketMQ "</span> + i).getBytes(RemotingHelper.DEFAULT_CHARSET) <span class="comment">/* Message body */</span></span><br><span class="line">                );</span><br><span class="line"></span><br><span class="line">                <span class="comment">/*</span></span><br><span class="line"><span class="comment">                 * Call send message to deliver message to one of brokers.</span></span><br><span class="line"><span class="comment">                 */</span></span><br><span class="line">                SendResult sendResult = producer.send(msg);</span><br><span class="line"></span><br><span class="line">                System.out.printf(<span class="string">"%s%n"</span>, sendResult);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">                Thread.sleep(<span class="number">1000</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Shut down once the producer instance is not longer in use.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        producer.shutdown();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里第 28 行，增加了 producer.setNamesrvAddr(“127.0.0.1:9876”) 代码块，指明 Producer 使用的 Namesrv。<br><b style="color:red">送命题</b><br><b>这里有道送命题：为什么 Producer 这里指明的是 Namesrv 的地址跟端口，而不是 Broker 呢？</b></p>
+<h1 id="启动-Consumer"><a href="#启动-Consumer" class="headerlink" title="启动 Consumer"></a>启动 Consumer</h1><p>打开 org.apache.rocketmq.example.quickstart.Consumer 示例类，代码如下：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Consumer</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException, MQClientException </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Instantiate with specified consumer group name.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        DefaultMQPushConsumer consumer = <span class="keyword">new</span> DefaultMQPushConsumer(<span class="string">"please_rename_unique_group_name_4"</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Specify name server addresses.</span></span><br><span class="line"><span class="comment">         * &lt;p/&gt;</span></span><br><span class="line"><span class="comment">         *</span></span><br><span class="line"><span class="comment">         * Alternatively, you may specify name server addresses via exporting environmental variable: NAMESRV_ADDR</span></span><br><span class="line"><span class="comment">         * &lt;pre&gt;</span></span><br><span class="line"><span class="comment">         * &#123;@code</span></span><br><span class="line"><span class="comment">         * consumer.setNamesrvAddr("name-server1-ip:9876;name-server2-ip:9876");</span></span><br><span class="line"><span class="comment">         * &#125;</span></span><br><span class="line"><span class="comment">         * &lt;/pre&gt;</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Specify where to start in case the specified consumer group is a brand new one.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        consumer.setNamesrvAddr(<span class="string">"127.0.0.1:9876"</span>); <span class="comment">// 设定 Namesrv 的地址与端口</span></span><br><span class="line">        consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         * Subscribe one more more topics to consume.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        consumer.subscribe(<span class="string">"TopicTest"</span>, <span class="string">"*"</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         *  Register callback to execute on arrival of messages fetched from brokers.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        consumer.registerMessageListener(<span class="keyword">new</span> MessageListenerConcurrently() &#123;</span><br><span class="line"></span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> ConsumeConcurrentlyStatus <span class="title">consumeMessage</span><span class="params">(List&lt;MessageExt&gt; msgs,</span></span></span><br><span class="line"><span class="function"><span class="params">                ConsumeConcurrentlyContext context)</span> </span>&#123;</span><br><span class="line">                System.out.printf(<span class="string">"%s Receive New Messages: %s %n"</span>, Thread.currentThread().getName(), msgs);</span><br><span class="line">                <span class="keyword">return</span> ConsumeConcurrentlyStatus.CONSUME_SUCCESS;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/*</span></span><br><span class="line"><span class="comment">         *  Launch the consumer instance.</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        consumer.start();</span><br><span class="line"></span><br><span class="line">        System.out.printf(<span class="string">"Consumer Started.%n"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在 25 行，我们还增加了 consumer.setNamesrvAddr(“127.0.0.1:9876”) 代码块，指明 Consumer 使用的 RocketMQ Namesrv 。</p>
+<p>然后，右键运行，RocketMQ Consumer 就启动完成。输入日志如下：</p>
+<figure class="highlight console"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">08:17:20.362 [main] DEBUG i.n.u.i.l.InternalLoggerFactory - Using SLF4J as the default logging framework</span><br><span class="line">Consumer Started.</span><br></pre></td></tr></table></figure>
+<p><b style="color:orange">如有消息堆积，则会在启动时刷刷出现消费消息的日志</b><br><b>再来一问，这里为何指定的不是Broker，而是Namesrv？</b></p>
+</section>
+    <!-- Tags START -->
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2019/05/07/MySQL-Transaction-MVCC/">
+        <span class="nav-arrow">← </span>
+        
+          MySQL-Transaction-MVCC
+        
+      </a>
+    
+    
+      <a class="nav-right" href="/2019/05/25/RocketMQ-NameServer/">
+        
+          RocketMQ NameServer
+        
+        <span class="nav-arrow"> →</span>
+      </a>
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <!--<div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>-->
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- No Comment -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#调试环境及工具"><span class="toc-nav-text">调试环境及工具</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#拉取源码"><span class="toc-nav-text">拉取源码</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#启动Namesrv"><span class="toc-nav-text">启动Namesrv</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#配置文件方式"><span class="toc-nav-text">配置文件方式</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#代码启动方式（推荐√）"><span class="toc-nav-text">代码启动方式（推荐√）</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#启动Broker"><span class="toc-nav-text">启动Broker</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#配置文件方式-1"><span class="toc-nav-text">配置文件方式</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#代码启动方式（推荐√）-1"><span class="toc-nav-text">代码启动方式（推荐√）</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#启动-Producer"><span class="toc-nav-text">启动 Producer</span></a></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#启动-Consumer"><span class="toc-nav-text">启动 Consumer</span></a></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'http://yoursite.com/2019/05/18/RocketMQ-Debug-Environment/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+     // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', 'http://file.muyutech.com/error-img.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== 'http://file.muyutech.com/error-img.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+        
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+
+    // qrcode
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+
+    // gitment
+    var gitmentConfig = "fgu123";
+    if (gitmentConfig !== 'undefined') {
+      var gitment = new Gitment({
+        id: "RocketMQ调试环境配置",
+        owner: "fgu123",
+        repo: "fgu123.github.io",
+        oauth: {
+          client_id: "0f87e490e00ee3fd87ef",
+          client_secret: "4a9d2b148e7971c2201ad12131ce8bf8159ccd2e"
+        },
+        theme: {
+          render(state, instance) {
+            const container = document.createElement('div')
+            container.lang = "en-US"
+            container.className = 'gitment-container gitment-root-container'
+            container.appendChild(instance.renderHeader(state, instance))
+            container.appendChild(instance.renderEditor(state, instance))
+            container.appendChild(instance.renderComments(state, instance))
+            container.appendChild(instance.renderFooter(state, instance))
+            return container;
+          }
+        }
+      })
+      gitment.render(document.getElementById('comments'))
+    }
+  })();
+</script>
+
+<script>
+  var disqus_shortname = '';
+  
+  var disqus_url = 'http://yoursite.com/2019/05/18/RocketMQ-Debug-Environment/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2019 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+<script src="/js/script.js"></script>
+  </body>
+</html>

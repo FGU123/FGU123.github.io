@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="ppxu&#39;s blog">
+  <meta name="keyword" content="java, blog, article">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      Redis基本数据结构-Dict | PPXu
+    
+  </title>
+  <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/plugins/gitment.css">
+  <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
+  <script src="/js/qrious.js"></script>
+<script src="/js/gitment.js"></script>
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+</head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>PPXu</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/search" class="item-link">Search</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/search" class="menu-link">Search</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>Redis基本数据结构-Dict</h2>
+  <p class="post-date">2018-11-03</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><h2 id="Dict简介"><a href="#Dict简介" class="headerlink" title="Dict简介"></a>Dict简介</h2><p>字典（dict）是Redis一个重要的基础数据结构，它是一个用于维护key和value映射关系的数据结构，与很多语言中的Map或dictionary类似。不过，这只是它在Redis中的一个用途而已，它在Redis中被使用的地方还有很多。比如Redis的数据库就是使用字典来作为底层实现的，对数据的增删查改操作都是构建在对字典的操作之上，又比如，一个Redis hash结构，当它的field较多时，便会采用dict来存储。再比如，<strong>Redis配合使用dict和skiplist来共同维护一个sorted set。</strong><br><br><br>字典经常作为一种数据结构内置在很多高级的编程语言里，但Redis的实现所使用的C语言中并没有内置这种数据结构，因此<strong>Redis构建了自己的字典实现</strong>。</p>
+<h2 id="Dict的双数组哈希表"><a href="#Dict的双数组哈希表" class="headerlink" title="Dict的双数组哈希表"></a>Dict的双数组哈希表</h2><p>Redis中的字典由dict.h/dict结构表示：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">dict</span> &#123;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 类型特定函数</span></span><br><span class="line">    dictType *type;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 私有数据</span></span><br><span class="line">    <span class="keyword">void</span> *privatedata;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 哈希表</span></span><br><span class="line">    dictht ht[<span class="number">2</span>];</span><br><span class="line"></span><br><span class="line">    <span class="comment">// rehash 索引</span></span><br><span class="line">    <span class="comment">// 当rehash不在进行时，值为-1</span></span><br><span class="line">    <span class="keyword">int</span> trehashidx; <span class="comment">/* rehashing not in progress if rehashidx == -1 */</span></span><br><span class="line">&#125;dict;</span><br></pre></td></tr></table></figure></p>
+<p>其中ht属性是一个包含两个项的数组，数组中的每个项都是一个dictht哈希表，一般情况下，字典只使用ht[0]哈希表，ht[1]哈希表只用于对ht[0]哈希表进行rehash时。<br><br>除了ht[1]之外，另一个和rehash有关的属性就是rehashidx，它记录了rehash目前的进度，如果目前没有在进行rehash，那么它的值为-1。</p>
+<p><img src="/images/post-Redis-DataStructure-3-Dict/20181103132847.jpg" alt=""></p>
+<h2 id="哈希算法"><a href="#哈希算法" class="headerlink" title="哈希算法"></a>哈希算法</h2><p>Redis计算哈希值和索引值的方法：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># 使用字典设置的哈希函数，计算键key的哈希值</span><br><span class="line">hash = dict-&gt;type-&gt;hashFunction(key);</span><br><span class="line"></span><br><span class="line"># 使用哈希值的 sizemark 属性和和哈希值，计算出索引值</span><br><span class="line"># 根据情况不同，ht[x]可以是ht[<span class="number">0</span>]或者ht[<span class="number">1</span>]</span><br><span class="line">index = hash &amp; dict-&gt;ht[x].sizemark;</span><br></pre></td></tr></table></figure></p>
+<p>当字典被用作数据库的底层实现，或者哈希键的底层实现时，Redis使用MurmurHash2算法来计算键的哈希值。</p>
+<h2 id="键冲突"><a href="#键冲突" class="headerlink" title="键冲突"></a>键冲突</h2><p>键冲突解决方法是链地址法（拉链法），与Java里的hashmap一样使用单向链表把同一个索引上的多个节点连接起来。<br>因为dictEntry节点组成的链表没有指向链表表尾的指针，所以为了速度考虑，程序总是把新节点添加到链表的表头位置（复杂度为O(1)），排在其它已有节点的前面。</p>
+<h2 id="Rehash"><a href="#Rehash" class="headerlink" title="Rehash"></a>Rehash</h2><p>哈希表的扩展与收缩是通过执行rehash（重新散列）操作来完成，操作步骤如下：</p>
+<ol>
+<li>空间分配：<br>为字典的ht[1]哈希表分配空间，这个哈希表的空间大小取决于要执行的操作，以及ht[0]当前包含的键值对数量（也即是ht[0].used属性的值）:</li>
+</ol>
+<ul>
+<li>如果是扩展操作，那么ht[1]的大小为第一个大于等于ht[0].used*2的2ⁿ（2的n次幂）。</li>
+<li>如果是收缩操作，那么ht[1]的大小为第一个大于等于ht[0].used的2ⁿ。</li>
+</ul>
+<ol start="2">
+<li>rehash：<br>将保存在ht[0]中的所有键值对rehash到ht[1]上面：rehash指的是重新计算键的哈希值和索引值，然后将键值对放置到ht[1]哈希表的指定位置上。</li>
+<li>替换：<br>当ht[0]包含的所有键值对都迁移到ht[1]之后（ht[0]变为空表），释放ht[0]，将ht[1]设置为ht[0]，并在ht[1]新创建一个空白哈希表，为下一次rehash做准备。</li>
+</ol>
+<h3 id="哈希表的扩展与收缩"><a href="#哈希表的扩展与收缩" class="headerlink" title="哈希表的扩展与收缩"></a>哈希表的扩展与收缩</h3><p>当以下条件中的任意一个被满足时，程序会自动开始对哈希表执行扩展操作：<br>1) 没在执行BGSAVE命令或者BGREWRITEAOF命令，而哈希表的负载因子≥1。<br>2) 有在执行BGSAVE命令或者BGREWRITEAOF命令,并且哈希表的负载因子≥0.5。</p>
+<pre><code>负载因子计算为：
+load_factor = ht[0].used / ht[0].size;
+</code></pre><p>负载因子＜0.1时，进行收缩操作。</p>
+<h2 id="渐进式rehash"><a href="#渐进式rehash" class="headerlink" title="渐进式rehash"></a>渐进式rehash</h2><p>Redis的扩展或收缩需要把ht[0]所有键值对rehash到ht[1]里，这个动作并不是一次性、集中式完成的，而是分多次、渐进式完成的。<br>这么做的原因是，当哈希表数据量庞大到一定量级时，一次性rehash操作会带来庞大的计算量，这样可能会导致服务器在一段时间内停止服务。<br>以下是渐进式rehash的详细步骤：<br>1) 为ht[1]分配空间，让字典同时持有ht[0]和ht[1]两个哈希表。<br>2) 在字典中维持一个索引计数器变量rehashidx，并将它的值设置为0，表示工作正式开始。<br>3) 在rehash进行期间，每次对字典执行增删改查操作时，程序除了执行指定的操作以外，还会顺带将ht[0]哈希表在rehashidx索引上的所有键值对rehash到ht[1]，当rehash完成之后，程序将rehashidx属性的值增1。<br>4) 随着字典操作的不断执行，最终在某个时间节点上，ht[0]的所有键值对都会到了ht[1]，这时程序将rehashidx属性的值设为-1，表示rehash操作完成。</p>
+<p><strong><br>因为在进行渐进式rehash的过程中，字典会同时使用ht[0]和ht[1]两个哈希表，所以期间的增删查改操作都会在两个表上进行，例如查找操作时，先会在ht[0]里查找，如果没找到，再查ht[1]，诸如此类。增加操作时，那么新添加的键值对一律会被保存到ht[1]里，而ht[0]则不进行添加，保证了ht[0]包含的键值对只减不增，并随着rehash操作的执行完毕而最终变成空表。<br></strong></p>
+</section>
+    <!-- Tags START -->
+    
+      <div class="tags">
+        <span>Tags:</span>
+        
+  <a href="/tags#Redis" >
+    <span class="tag-code">Redis</span>
+  </a>
+
+  <a href="/tags#数据结构" >
+    <span class="tag-code">数据结构</span>
+  </a>
+
+      </div>
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2018/10/26/Redis-DataStructure-2-SkipList/">
+        <span class="nav-arrow">← </span>
+        
+          Redis基本数据结构-SkipList
+        
+      </a>
+    
+    
+      <a class="nav-right" href="/2018/11/03/Synchronized-Summary/">
+        
+          整理Synchronized
+        
+        <span class="nav-arrow"> →</span>
+      </a>
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <!--<div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>-->
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- No Comment -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Dict简介"><span class="toc-nav-text">Dict简介</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Dict的双数组哈希表"><span class="toc-nav-text">Dict的双数组哈希表</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#哈希算法"><span class="toc-nav-text">哈希算法</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#键冲突"><span class="toc-nav-text">键冲突</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Rehash"><span class="toc-nav-text">Rehash</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#哈希表的扩展与收缩"><span class="toc-nav-text">哈希表的扩展与收缩</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#渐进式rehash"><span class="toc-nav-text">渐进式rehash</span></a></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'http://yoursite.com/2018/11/03/Redis-DataStructure-3-Dict/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+     // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', 'http://file.muyutech.com/error-img.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== 'http://file.muyutech.com/error-img.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+        
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+
+    // qrcode
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+
+    // gitment
+    var gitmentConfig = "fgu123";
+    if (gitmentConfig !== 'undefined') {
+      var gitment = new Gitment({
+        id: "Redis基本数据结构-Dict",
+        owner: "fgu123",
+        repo: "fgu123.github.io",
+        oauth: {
+          client_id: "0f87e490e00ee3fd87ef",
+          client_secret: "4a9d2b148e7971c2201ad12131ce8bf8159ccd2e"
+        },
+        theme: {
+          render(state, instance) {
+            const container = document.createElement('div')
+            container.lang = "en-US"
+            container.className = 'gitment-container gitment-root-container'
+            container.appendChild(instance.renderHeader(state, instance))
+            container.appendChild(instance.renderEditor(state, instance))
+            container.appendChild(instance.renderComments(state, instance))
+            container.appendChild(instance.renderFooter(state, instance))
+            return container;
+          }
+        }
+      })
+      gitment.render(document.getElementById('comments'))
+    }
+  })();
+</script>
+
+<script>
+  var disqus_shortname = '';
+  
+  var disqus_url = 'http://yoursite.com/2018/11/03/Redis-DataStructure-3-Dict/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2019 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+<script src="/js/script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="ppxu&#39;s blog">
+  <meta name="keyword" content="java, blog, article">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      RocketMQ-高可用 | PPXu
+    
+  </title>
+  <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/plugins/gitment.css">
+  <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
+  <script src="/js/qrious.js"></script>
+<script src="/js/gitment.js"></script>
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+</head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>PPXu</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/search" class="item-link">Search</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/search" class="menu-link">Search</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>RocketMQ-高可用</h2>
+  <p class="post-date">2019-06-22</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><h1 id="主从同步（HA）机制"><a href="#主从同步（HA）机制" class="headerlink" title="主从同步（HA）机制"></a>主从同步（HA）机制</h1><h2 id="RocketMQ高可用方案"><a href="#RocketMQ高可用方案" class="headerlink" title="RocketMQ高可用方案"></a>RocketMQ高可用方案</h2><p>RocketMQ的Broker分为Master与Slave两个角色，一般高可用方案，采取主从架构，具体也有一主一丛、多主多从（多对主从对）等部署方式，如图<br><img src="/images/post-RocketMQ-Summary/20160629175853107.jpg" alt=""></p>
+<p>主从架构的工作流程，就是在每台Broker配置他们的主从角色，同一个BrokerName的主从Broker集群中，以BrokerId作为主从角色的奠定，BrokerId为0代表Master，大于0则表示Slave。主从之间会维持一个连接，HAConnection，在Master Broker接收到Producer发过来的消息后，会把消息同步到Slave Broker上，这样一旦Master宕机，Slave依然可以提供服务。这就是RocketMQ保障服务高可用的原理。</p>
+<h2 id="主从同步模式"><a href="#主从同步模式" class="headerlink" title="主从同步模式"></a>主从同步模式</h2><p>主从Broker之间的数据同步包括以下两种：</p>
+<h3 id="同步双写"><a href="#同步双写" class="headerlink" title="同步双写"></a>同步双写</h3><p>写入消息时，master先写入，之后复制到slave，确认slave也存储了消息后才向producer答复返回成功。</p>
+<blockquote>
+<ul>
+<li>优点：数据与服务都无单点，Master宕机情况下，消息无延迟，服务可用性与数据可用性都非常高</li>
+<li>缺点：性能比异步复制模式略低，大约低10%左右，发送单个消息的 RT 会略高。目前主宕机后，备机不能自动切换为主机，后续会支持自动切换功能。</li>
+</ul>
+</blockquote>
+<h3 id="异步复制"><a href="#异步复制" class="headerlink" title="异步复制"></a>异步复制</h3><p>先答复producer，再去向salve复制。</p>
+<blockquote>
+<ul>
+<li>优点：即使磁盘损坏，消息丢失的非常少，且消息实时性不会受影响，因为 Master 宕机后，消费者仍然可以从 Slave消费，此过程对应用透明。不需要人工干预。性能同多 Master 模式几乎一样。</li>
+<li>缺点：Master宕机，磁盘损坏情况，会丢失少量消息。</li>
+</ul>
+</blockquote>
+<p>基于不同的同步模式，Broker的角色类型如下：<br><figure class="highlight java"><figcaption><span>org.apache.rocketmq.store.config.BrokerRole</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">enum</span> BrokerRole &#123;</span><br><span class="line">	ASYNC_MASTER,</span><br><span class="line">	SYNC_MASTER,</span><br><span class="line">	SLAVE;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h2 id="主从同步实现"><a href="#主从同步实现" class="headerlink" title="主从同步实现"></a>主从同步实现</h2><h3 id="同步元数据"><a href="#同步元数据" class="headerlink" title="同步元数据"></a>同步元数据</h3><p>Slave需要和Master同步的不仅是消息内容，还有一些元数据也需要同步，譬如：<br>Topic配置信息（ syncTopicConfig）、Consumer偏移量信息（syncConsumerOffset）、延迟队列偏移量（syncDelayOffset） 和 订阅组配置信息（syncSubscriptionGroupConfig）。<br>Broker启动时，会判断自己是否Slave角色，如果是就会启动定时同步任务，从Master复制元数据过来。</p>
+<figure class="highlight java"><figcaption><span>org.apache.rocketmq.broker.BrokerController.initialize()</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">        <span class="keyword">if</span> (BrokerRole.SLAVE == <span class="keyword">this</span>.messageStoreConfig.getBrokerRole()) &#123;</span><br><span class="line">            <span class="keyword">if</span> (<span class="keyword">this</span>.messageStoreConfig.getHaMasterAddress() != <span class="keyword">null</span> &amp;&amp; <span class="keyword">this</span>.messageStoreConfig.getHaMasterAddress().length() &gt;= <span class="number">6</span>) &#123;</span><br><span class="line">                <span class="keyword">this</span>.messageStore.updateHaMasterAddress(<span class="keyword">this</span>.messageStoreConfig.getHaMasterAddress());</span><br><span class="line">                <span class="keyword">this</span>.updateMasterHAServerAddrPeriodically = <span class="keyword">false</span>;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">this</span>.updateMasterHAServerAddrPeriodically = <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">this</span>.scheduledExecutorService.scheduleAtFixedRate(<span class="keyword">new</span> Runnable() &#123;</span><br><span class="line"></span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">                        <span class="comment">//slave 定期同步</span></span><br><span class="line">                        BrokerController.<span class="keyword">this</span>.slaveSynchronize.syncAll();</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (Throwable e) &#123;</span><br><span class="line">                        log.error(<span class="string">"ScheduledTask syncAll slave exception"</span>, e);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;, <span class="number">1000</span> * <span class="number">10</span>, <span class="number">1000</span> * <span class="number">60</span>, TimeUnit.MILLISECONDS);</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>这里的 BrokerController.this.slaveSynchronize.syncAll()方法里边，就调用了syncTopicConfig()，syncConsumerOffset()，syncDelayOffset()，syncSubscriptionGroupConfig()</p>
+<figure class="highlight java"><figcaption><span>org.apache.rocketmq.broker.slave.SlaveSynchronize.syncAll()</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">syncAll</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	<span class="keyword">this</span>.syncTopicConfig();</span><br><span class="line">	<span class="keyword">this</span>.syncConsumerOffset();</span><br><span class="line">	<span class="keyword">this</span>.syncDelayOffset();</span><br><span class="line">	<span class="keyword">this</span>.syncSubscriptionGroupConfig();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里的各种元数据的复制，最终都是通过Netty走网络请求去Master broker获取到元数据到本地，然后走本地文件写入做的持久化操作。<br>以其中一个为例子，syncConsumerOffset走一遍同步过程：<br><figure class="highlight java"><figcaption><span>org.apache.rocketmq.broker.slave.SlaveSynchronize.syncConsumerOffset()</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">syncConsumerOffset</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    String masterAddrBak = <span class="keyword">this</span>.masterAddr;</span><br><span class="line">    <span class="keyword">if</span> (masterAddrBak != <span class="keyword">null</span>) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            ConsumerOffsetSerializeWrapper offsetWrapper =</span><br><span class="line">                <span class="keyword">this</span>.brokerController.getBrokerOuterAPI().getAllConsumerOffset(masterAddrBak);</span><br><span class="line">            <span class="keyword">this</span>.brokerController.getConsumerOffsetManager().getOffsetTable()</span><br><span class="line">                .putAll(offsetWrapper.getOffsetTable());</span><br><span class="line">            <span class="keyword">this</span>.brokerController.getConsumerOffsetManager().persist();</span><br><span class="line">            log.info(<span class="string">"Update slave consumer offset from master, &#123;&#125;"</span>, masterAddrBak);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            log.error(<span class="string">"SyncConsumerOffset Exception, &#123;&#125;"</span>, masterAddrBak, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>基本逻辑就是 getAllConsumerOffset 方法里边组装一个RemotingCommand，底层通过Netty将请求发送到Master角色的Broker，表示请求获取offset，然后Master那端响应请求，返回Offset给Slave这端，Slave这端本地拿到offset后，接下来就是用一个map存本地内存，以及调persist方法持久化到文件里。</p>
+<p>同步元数据的方法基本与上面差不多，相对比较简单，这里省略。</p>
+<h3 id="同步消息体"><a href="#同步消息体" class="headerlink" title="同步消息体"></a>同步消息体</h3><p>同步消息体是主从同步的核心，也就是同步commitLog内容。CommitLog和元数据的同步不一样：首先，CommitLog的数据量比元数据要大；其次，对实时性和可靠性的要求，CommitLog同步的要求要高一些。元数据的同步是定时任务进行的，在两次同步的时间查里，如果出现异常可能会造成Master上的元数据内容和Slave上的元数据内容不一样，不过这种情况还可以补救（手动调整offset，重启consumer等措施）。但是CommitLog在高可靠性场景下如果没有及时同步，一旦Master机器出现故障，消息就彻底丢失了。<br><br></p>
+<p>HAService 是实现commitLog 同步的主体，它在Master 机器和Slave 机器上执行的逻辑不同， 默认是在Master 机器上执行。<br>RocketMQ的消息主从同步的实现主要在 store 工程下的 org.apache.rocketmq.store.ha包，包含三个类：HAService、HAConnection、WaitNotifyObject。<br><br></p>
+<p>HAService是主从同步的核心实现类，其内部类包括：</p>
+<blockquote>
+<ul>
+<li>AcceptSocketService： HA Master端监听HA Client端（Slave端）连接的实现类</li>
+<li>GroupTransferService： 主从同步通知实现类</li>
+<li>HAClient： HA Client端（Slave端）实现类</li>
+</ul>
+</blockquote>
+<p>HAConnection是HA Master服务端HA连接对象的封装，与Broker Slave服务器之间的读写实现类，内部类包括：</p>
+<blockquote>
+<ul>
+<li>ReadSocketService： 网络读实现类</li>
+<li>WriteSocketService： 网络写实现类<br><br></li>
+</ul>
+</blockquote>
+<p>HAService的start入口<br><figure class="highlight java"><figcaption><span>org.apache.rocketmq.store.ha.HAService.start()</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">start</span><span class="params">()</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">	<span class="keyword">this</span>.acceptSocketService.beginAccept();</span><br><span class="line">	<span class="keyword">this</span>.acceptSocketService.start();</span><br><span class="line">	<span class="keyword">this</span>.groupTransferService.start();</span><br><span class="line">	<span class="keyword">this</span>.haClient.start();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>大致过程包括：</p>
+<ol>
+<li>主服务器启动，建立在特定端口上监听从服务器的socket连接</li>
+<li>启动监听socket连接线程</li>
+<li>启动主从同步通知线程，等待同步数据的传输</li>
+<li>启动HA Client端线程（针对Slave端）<br>消息体的主从复制方式分为两种：同步双写、异步复制。</li>
+</ol>
+<h3 id="同步双写-1"><a href="#同步双写-1" class="headerlink" title="同步双写"></a>同步双写</h3><p>同步双写方式，就是在Master Broker处理Producer发送消息的时候，会同时写入到Slave Broker，待Slave写入成功并返回，Producer才算完成本次消息发送。在消息存储方法org.apache.rocketmq.store.CommitLog.putMessage(MessageExtBrokerInner)中会调handleHA(…)方法来进行同步双写。</p>
+<figure class="highlight java"><figcaption><span>org.apache.rocketmq.store.CommitLog.handleHA(AppendMessageResult, PutMessageResult,MessageExt)</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">handleHA</span><span class="params">(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (BrokerRole.SYNC_MASTER == <span class="keyword">this</span>.defaultMessageStore.getMessageStoreConfig().getBrokerRole()) &#123;</span><br><span class="line">        HAService service = <span class="keyword">this</span>.defaultMessageStore.getHaService();</span><br><span class="line">        <span class="keyword">if</span> (messageExt.isWaitStoreMsgOK()) &#123;</span><br><span class="line">            <span class="comment">// Determine whether to wait</span></span><br><span class="line">            <span class="keyword">if</span> (service.isSlaveOK(result.getWroteOffset() + result.getWroteBytes())) &#123;</span><br><span class="line">                GroupCommitRequest  request = <span class="keyword">new</span> GroupCommitRequest(result.getWroteOffset() + result.getWroteBytes());</span><br><span class="line">                service.putRequest(request);</span><br><span class="line">                service.getWaitNotifyObject().wakeupAll();</span><br><span class="line">                <span class="keyword">boolean</span> flushOK =</span><br><span class="line">                    request.waitForFlush(<span class="keyword">this</span>.defaultMessageStore.getMessageStoreConfig().getSyncFlushTimeout());</span><br><span class="line">                <span class="keyword">if</span> (!flushOK) &#123;</span><br><span class="line">                    log.error(<span class="string">"do sync transfer other node, wait return, but failed, topic: "</span> + messageExt.getTopic() + <span class="string">" tags: "</span></span><br><span class="line">                        + messageExt.getTags() + <span class="string">" client address: "</span> + messageExt.getBornHostNameString());</span><br><span class="line">                    putMessageResult.setPutMessageStatus(PutMessageStatus.FLUSH_SLAVE_TIMEOUT);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// Slave problem</span></span><br><span class="line">            <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// Tell the producer, slave not available</span></span><br><span class="line">                putMessageResult.setPutMessageStatus(PutMessageStatus.SLAVE_NOT_AVAILABLE);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>HAService会向其groupTransferService添加一个GroupCommitRequest任务，然后唤醒WriteSocketService通知master进行commitLog同步，然后<br>master收到通知开始把commitLog发送到slave，request.waitForFlush等待slave获取master的commitLog同步，在slave broker获取到master<br>broker的通知后，其HAService的GroupTransferService中的requestsRead列表中就有数据，就可以在GroupTransferService中进行处理。</p>
+<figure class="highlight java"><figcaption><span>org.apache.rocketmq.store.ha.HAService.GroupTransferService.doWaitTransfer()</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doWaitTransfer</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">synchronized</span> (<span class="keyword">this</span>.requestsRead) &#123;</span><br><span class="line">        <span class="keyword">if</span> (!<span class="keyword">this</span>.requestsRead.isEmpty()) &#123;</span><br><span class="line">            <span class="keyword">for</span> (CommitLog.GroupCommitRequest req : <span class="keyword">this</span>.requestsRead) &#123;</span><br><span class="line">                <span class="keyword">boolean</span> transferOK = HAService.<span class="keyword">this</span>.push2SlaveMaxOffset.get() &gt;= req.getNextOffset();</span><br><span class="line">                <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; !transferOK &amp;&amp; i &lt; <span class="number">5</span>; i++) &#123;</span><br><span class="line">                    <span class="keyword">this</span>.notifyTransferObject.waitForRunning(<span class="number">1000</span>);</span><br><span class="line">                    transferOK = HAService.<span class="keyword">this</span>.push2SlaveMaxOffset.get() &gt;= req.getNextOffset();</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (!transferOK) &#123;</span><br><span class="line">                    log.warn(<span class="string">"transfer messsage to slave timeout, "</span> + req.getNextOffset());</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                req.wakeupCustomer(transferOK);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">this</span>.requestsRead.clear();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如上文HAService的start()方法代码，HAService在启动的时候，也会启动HAService中的GroupTransferService，它会启动线程去循环执行doWaitTransfer()方法，处理GroupTransferService中的master已同步的GroupCommitRequest，req.wakeupCustomer(transferOK)唤醒前面等待的request.waitForFlush线程，让其handleHA得以返回。</p>
+<h3 id="异步复制-1"><a href="#异步复制-1" class="headerlink" title="异步复制"></a>异步复制</h3><p>同步双写是Master主动往Slave去写入消息，而异步复制则是Slave端对Master的主动复制，我们直接看haClient：</p>
+<figure class="highlight java"><figcaption><span>org.apache.rocketmq.store.ha.HAService.HAClient.run()</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    log.info(<span class="keyword">this</span>.getServiceName() + <span class="string">" service started"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (!<span class="keyword">this</span>.isStopped()) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (<span class="keyword">this</span>.connectMaster()) &#123;</span><br><span class="line">                <span class="comment">// 先汇报最大物理Offset || 定时心跳方式汇报</span></span><br><span class="line">                <span class="keyword">if</span> (<span class="keyword">this</span>.isTimeToReportOffset()) &#123;</span><br><span class="line">                    <span class="keyword">boolean</span> result = <span class="keyword">this</span>.reportSlaveMaxOffset(<span class="keyword">this</span>.currentReportedOffset);<span class="comment">//上报master</span></span><br><span class="line">                    <span class="keyword">if</span> (!result) &#123;</span><br><span class="line">                        <span class="keyword">this</span>.closeMaster();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 等待应答</span></span><br><span class="line">                <span class="keyword">this</span>.selector.select(<span class="number">1000</span>);</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 接收数据</span></span><br><span class="line">                <span class="keyword">boolean</span> ok = <span class="keyword">this</span>.processReadEvent();</span><br><span class="line">                <span class="keyword">if</span> (!ok) &#123;</span><br><span class="line">                    <span class="keyword">this</span>.closeMaster();</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 只要本地有更新，就汇报最大物理Offset</span></span><br><span class="line">                <span class="keyword">if</span> (!reportSlaveMaxOffsetPlus()) &#123;</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 检查Master的反向心跳</span></span><br><span class="line">                <span class="keyword">long</span> interval =</span><br><span class="line">                    HAService.<span class="keyword">this</span>.getDefaultMessageStore().getSystemClock().now()</span><br><span class="line">                        - <span class="keyword">this</span>.lastWriteTimestamp;</span><br><span class="line">                <span class="keyword">if</span> (interval &gt; HAService.<span class="keyword">this</span>.getDefaultMessageStore().getMessageStoreConfig()</span><br><span class="line">                    .getHaHousekeepingInterval()) &#123;</span><br><span class="line">                    log.warn(<span class="string">"HAClient, housekeeping, found this connection["</span> + <span class="keyword">this</span>.masterAddress</span><br><span class="line">                        + <span class="string">"] expired, "</span> + interval);</span><br><span class="line">                    <span class="keyword">this</span>.closeMaster();</span><br><span class="line">                    log.warn(<span class="string">"HAClient, master not response some time, so close connection"</span>);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">this</span>.waitForRunning(<span class="number">1000</span> * <span class="number">5</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            log.warn(<span class="keyword">this</span>.getServiceName() + <span class="string">" service has exception. "</span>, e);</span><br><span class="line">            <span class="keyword">this</span>.waitForRunning(<span class="number">1000</span> * <span class="number">5</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    log.info(<span class="keyword">this</span>.getServiceName() + <span class="string">" service end"</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如上文中的HAService的start()方法所示，在HAService启动时，会去创建一个HAClient实例，它是一个后台线程（ServiceThread），异步复制master消息体就是在slave第一次启动的时候会上报自己的maxOffset，后续默认每隔5秒向master上报自己的maxOffset，上报失败会关闭连接。也就是说，slave和master之间的互相传输，是slave采取的主动迈出第一步，因为 broker 并不知道slave broker的maxOffset，不知道从哪里同步起。<br><figure class="highlight java"><figcaption><span>org.apache.rocketmq.store.ha.HAService.AcceptSocketService.run()</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    log.info(<span class="keyword">this</span>.getServiceName() + <span class="string">" service started"</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (!<span class="keyword">this</span>.isStopped()) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">this</span>.selector.select(<span class="number">1000</span>);</span><br><span class="line">            Set&lt;SelectionKey&gt; selected = <span class="keyword">this</span>.selector.selectedKeys();</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (selected != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">for</span> (SelectionKey k : selected) &#123;</span><br><span class="line">                    <span class="keyword">if</span> ((k.readyOps() &amp; SelectionKey.OP_ACCEPT) != <span class="number">0</span>) &#123;</span><br><span class="line">                        SocketChannel sc = ((ServerSocketChannel) k.channel()).accept();</span><br><span class="line"></span><br><span class="line">                        <span class="keyword">if</span> (sc != <span class="keyword">null</span>) &#123;</span><br><span class="line">                            HAService.log.info(<span class="string">"HAService receive new connection, "</span></span><br><span class="line">                                + sc.socket().getRemoteSocketAddress());</span><br><span class="line"></span><br><span class="line">                            <span class="keyword">try</span> &#123;</span><br><span class="line">                                HAConnection conn = <span class="keyword">new</span> HAConnection(HAService.<span class="keyword">this</span>, sc);</span><br><span class="line">                                conn.start();</span><br><span class="line">                                HAService.<span class="keyword">this</span>.addConnection(conn);</span><br><span class="line">                            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                                log.error(<span class="string">"new HAConnection exception"</span>, e);</span><br><span class="line">                                sc.close();</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        log.warn(<span class="string">"Unexpected ops in select "</span> + k.readyOps());</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                selected.clear();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            log.error(<span class="keyword">this</span>.getServiceName() + <span class="string">" service has exception."</span>, e);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    log.info(<span class="keyword">this</span>.getServiceName() + <span class="string">" service end"</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>HAService在创建的时候也会创建AcceptSocketService对象，也是一个后台线程，用来接收处理socket请求的，然后创建一个HAConnection封装对应的socket连接进行请求处理。</p>
+</section>
+    <!-- Tags START -->
+    
+      <div class="tags">
+        <span>Tags:</span>
+        
+  <a href="/tags#消息队列" >
+    <span class="tag-code">消息队列</span>
+  </a>
+
+  <a href="/tags#分布式" >
+    <span class="tag-code">分布式</span>
+  </a>
+
+  <a href="/tags#异步" >
+    <span class="tag-code">异步</span>
+  </a>
+
+  <a href="/tags#削峰" >
+    <span class="tag-code">削峰</span>
+  </a>
+
+      </div>
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2019/06/15/RocketMQ-Transaction-Message/">
+        <span class="nav-arrow">← </span>
+        
+          RocketMQ-事务消息
+        
+      </a>
+    
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <!--<div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>-->
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- No Comment -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#主从同步（HA）机制"><span class="toc-nav-text">主从同步（HA）机制</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#RocketMQ高可用方案"><span class="toc-nav-text">RocketMQ高可用方案</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#主从同步模式"><span class="toc-nav-text">主从同步模式</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#同步双写"><span class="toc-nav-text">同步双写</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#异步复制"><span class="toc-nav-text">异步复制</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#主从同步实现"><span class="toc-nav-text">主从同步实现</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#同步元数据"><span class="toc-nav-text">同步元数据</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#同步消息体"><span class="toc-nav-text">同步消息体</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#同步双写-1"><span class="toc-nav-text">同步双写</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#异步复制-1"><span class="toc-nav-text">异步复制</span></a></li></ol></li></ol></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'http://yoursite.com/2019/06/22/RocketMQ-High-Available/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+     // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', 'http://file.muyutech.com/error-img.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== 'http://file.muyutech.com/error-img.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+        
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+
+    // qrcode
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+
+    // gitment
+    var gitmentConfig = "fgu123";
+    if (gitmentConfig !== 'undefined') {
+      var gitment = new Gitment({
+        id: "RocketMQ-高可用",
+        owner: "fgu123",
+        repo: "fgu123.github.io",
+        oauth: {
+          client_id: "0f87e490e00ee3fd87ef",
+          client_secret: "4a9d2b148e7971c2201ad12131ce8bf8159ccd2e"
+        },
+        theme: {
+          render(state, instance) {
+            const container = document.createElement('div')
+            container.lang = "en-US"
+            container.className = 'gitment-container gitment-root-container'
+            container.appendChild(instance.renderHeader(state, instance))
+            container.appendChild(instance.renderEditor(state, instance))
+            container.appendChild(instance.renderComments(state, instance))
+            container.appendChild(instance.renderFooter(state, instance))
+            return container;
+          }
+        }
+      })
+      gitment.render(document.getElementById('comments'))
+    }
+  })();
+</script>
+
+<script>
+  var disqus_shortname = '';
+  
+  var disqus_url = 'http://yoursite.com/2019/06/22/RocketMQ-High-Available/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2019 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+<script src="/js/script.js"></script>
+  </body>
+</html>

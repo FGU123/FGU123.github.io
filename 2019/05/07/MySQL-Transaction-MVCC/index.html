@@ -208,7 +208,7 @@
 <p><b>PS：为什么说undo log是逻辑日志？</b><br>Undo log的回滚机制，只是保证所有数据变更行为被逻辑上取消了，也就是根据undo log找到数据变更行为，把对应的逆反行为执行上，即成功回滚。<b>对于每个delete行为，则执行insert作回滚；每个update，则执行相反的update把数据恢复回去；而每个insert，则执行delete</b>，但是这样并不会把物理存储结构的变化给变更回去，譬如，用户执行了insert 10W条记录的一个事务，会导致表空间增大，但在rollback完成后，仅仅是表数据记录回滚，表空间的大小并不会因此而收缩。<b>而为了保证undo log的持久性，undo log的写入操作也会引发redo log的产生。</b></p>
 <h1 id="多版本并发控制（MVCC）"><a href="#多版本并发控制（MVCC）" class="headerlink" title="多版本并发控制（MVCC）"></a>多版本并发控制（MVCC）</h1><h2 id="回溯到数据历史版本"><a href="#回溯到数据历史版本" class="headerlink" title="回溯到数据历史版本"></a>回溯到数据历史版本</h2><p>首先InnoDB每一行数据还有一个DB_ROLL_PT的回滚指针，用于指向该行修改前的上一个历史版本。<br>事实上，MySQL给每行数据添加了三个隐藏字段，分别是该行的隐式行ID（DB_ROW_ID），事务号（DB_TRX_ID）和上述的回滚指针。<br><img src="/images/post-mysql-transaction-mvcc/2019‎05‎15‎0‏‎73339.png" alt=""></p>
 <p>当插入一条新数据时，记录上对应的回滚指针为NULL，表明没有历史版本。</p>
-<p><img src="/images/post-mysql-transaction-mvcc/2019‎05‎15‎0‏‎70926.png" alt=""><br>更新记录时，原记录将被放入到undo表空间中，并通过DB_ROLL_PT指向该记录。session2查询返回的未修改数据就是从这个undo中返回的。MySQL就是根据记录上的回滚段指针及事务ID判断记录是否可见，如果不可见继续按照DB_ROLL_PT继续回溯查找。</p>
+<p><img src="/images/post-mysql-transaction-mvcc/2019‎05‎15‎0‏‎70926.png" alt=""><br>更新记录时，原记录将被放入到undo表空间中，并通过DB_ROLL_PT指向该记录。MySQL就是根据记录上的回滚段指针及事务ID判断记录是否可见，如果不可见则按照DB_ROLL_PT继续回溯查找。</p>
 <h2 id="Read-View判断行记录是否可见"><a href="#Read-View判断行记录是否可见" class="headerlink" title="Read View判断行记录是否可见"></a>Read View判断行记录是否可见</h2><p>Read View用来判断是否为当前执行事务所见，从而达到对事务之间的数据可见性控制。<br>当开始一个事务或者每个查询语句执行时，把当前系统中活动的事务的ID都拷贝到一个列表，这个列表中最早的事务ID是tmin，最晚的事务ID为tmax，这个列表为Read View。当读到一行数据时，该行上面当前事务ID（DB_TRX_ID）记为tid0（也就是最后一次对数据进行修改的事务的ID），当前行数据是否可见的判断逻辑如图：<br><img src="/images/post-mysql-transaction-mvcc/2019‎05‎07‎013537.png" alt=""></p>
 <blockquote>
 <p>READ COMMITTED<br>事务内的每个查询语句执行时都会重新创建Read View，这样就会产生不可重复的现象。</p>

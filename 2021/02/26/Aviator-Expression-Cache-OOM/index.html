@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="ppxu&#39;s blog">
+  <meta name="keyword" content="java, blog, article">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      Google Aviator的表达式缓存膨胀问题 | PPXu
+    
+  </title>
+  <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/plugins/gitment.css">
+  <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
+  <script src="/js/qrious.js"></script>
+<script src="/js/gitment.js"></script>
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+</head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>PPXu</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/search" class="item-link">Search</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/search" class="menu-link">Search</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>Google Aviator的表达式缓存膨胀问题</h2>
+  <p class="post-date">2021-02-26</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><h2 id="Aviator简介"><a href="#Aviator简介" class="headerlink" title="Aviator简介"></a>Aviator简介</h2><p>Aviator是一个高性能、轻量级的基于Java实现的表达式引擎，它动态地将String类型的表达式编译成Java ByteCode并交给JVM执行。<br><br><br>Aviator 的基本过程是将表达式直接翻译成对应的 java 字节码执行，整个过程最多扫两趟（开启执行优先模式，如果是编译优先模式下就一趟），这样就保证了它的性能超越绝大部分解释性的表达式引擎，测试也证明如此；其次，除了依赖  commons-beanutils 这个库之外（用于做反射）不依赖任何第三方库，因此整体非常轻量级，整个 jar 包大小哪怕发展到现在 5.0 这个大版本，也才 430K。同时， Aviator 内置的函数库非常“节制”，除了必须的字符串处理、数学函数和集合处理之外，类似文件 IO、网络等等你都是没法使用的，这样能保证运行期的安全，如果你需要这些高阶能力，可以通过开放的自定义函数来接入。因此总结它的特点是：<br><br></p>
+<blockquote>
+<ul>
+<li>高性能</li>
+<li>轻量级</li>
+<li>一些比较有特色的特点：<br>○ 支持运算符重载<br>○ 原生支持大整数和 BigDecimal 类型及运算，并且通过运算符重载和一般数字类型保持一致的运算方式。<br>○ 原生支持正则表达式类型及匹配运算符 =~<br>○ 类 clojure 的 seq 库及 lambda 支持，可以灵活地处理各种集合</li>
+<li>开放能力：包括自定义函数接入以及各种定制选项</li>
+</ul>
+</blockquote>
+<h2 id="Aviator表达式的使用场景"><a href="#Aviator表达式的使用场景" class="headerlink" title="Aviator表达式的使用场景"></a>Aviator表达式的使用场景</h2><p>在公司的一个项目，主要是基于配置来定义和实现不同的埋点接口，当中涉及部分表达式求值的配置项，使用了Aviator来实现所配置的表达式。<br>该项目使用了Aviator一段较长的时间，期间一直保持稳定服务。直到最近一次突然线上出现内存膨胀问题。</p>
+<h2 id="问题暴露"><a href="#问题暴露" class="headerlink" title="问题暴露"></a>问题暴露</h2><p>2021年2月21号收到告警服务请求成功率下降，可用性变低</p>
+<h2 id="问题处理"><a href="#问题处理" class="headerlink" title="问题处理"></a>问题处理</h2><h3 id="即时处理"><a href="#即时处理" class="headerlink" title="即时处理"></a>即时处理</h3><p>接收到告警后，开发迅速响应处理问题，通过日志快速排查到是OOM问题，内存爆满，在服务器上dump内存日志后并重启机器，尽快恢复线上服务正常。</p>
+<p><img src="/images/post-Aviator-Expresion-Cache-OOM/20210226152336.png" alt=""></p>
+<h3 id="原因定位及分析"><a href="#原因定位及分析" class="headerlink" title="原因定位及分析"></a>原因定位及分析</h3><p>通过日志观察得知服务在当天某个时间点左右开始出现频繁fullGC，并且日志里打印了类似GC回收无效/低效（GC overhead limit exceeded）的异常堆栈<br>从该报错信息可以看出，GC并不能有效地回收内存，从而导致频繁fullGC</p>
+<p><img src="/images/post-Aviator-Expresion-Cache-OOM/20210226143711.png" alt=""></p>
+<p>要解决这个问题，需要先分析到内存中的对象情况，思路在于如何解答这两个问题：</p>
+<blockquote>
+<p>1.哪类对象占用了最多的内存？<br>2.这些对象是在哪部分代码中分配的？</p>
+</blockquote>
+<p>通过运维同学帮忙在线上dump出的内存快照，使用Jprofiler分析，看出内存当中，存在一个静态对象（com.googlecode.aviator.AviatorEvaluationInstance），这个对象占用内存比例极高（98%），这解答了上面第一个问题</p>
+<p><img src="/images/post-Aviator-Expresion-Cache-OOM/20210226151224.png" alt=""></p>
+<p>再看这个对象的引用链，我们看到了这个静态对象的对外引用（outgoing reference，对其它对象的引用）情况，从逐层的引用情况看出来，当中有两层ConcurrentHashMap，其中第二层的ConcurrentHashMap被怀疑正是当时内存占用率飙高的原因所在。我们通过引用链，翻查框架的源码，找到了这个对象和它所引用的两层ConcurrentHashMap，最终解决了上面第二个问题。</p>
+<p>一开始，通过翻阅源码及相关文档，尝试理解这个框架的代码设计，尝试解答为什么这里会设计两个缓存对象。</p>
+<blockquote>
+<p>排查过程中，在GitHub上搜查这个框架相关的问题，找到了一个类似的内存被占满的issue，<a href="https://github.com/killme2008/aviatorscript/issues/63" target="_blank" rel="noopener">循环调用AviatorEvaluator.execute的时候会出现问题</a> ， 但发现这个issue讨论的是Aviator框架在默认不适用缓存的模式下会在每次调用执行引擎时都实时编译表达式，并且编译后的表达式不是存放在堆内存而是在方法区，这会导致堆外内存占用高，并且由于实时编译，当高并发或高频调用时CPU占用也会偏高。这跟我们线上所遇到的问题还不是同一个问题，但这给了我们一个排查方向，把问题聚焦到了AviatorEvaluator的执行过程的代码，继而聚焦到了当中的两层ConcurrentHashMap缓存的设计。</p>
+</blockquote>
+<p>最后，在官方文档及对照框架源码，个人理解这个框架的两层ConcurrentHashMap缓存的设计，可能有以下的涵义：</p>
+<blockquote>
+<p>第一层ConcurrentHashMap缓存：是为了对不带实参的源表达式（Text Expression）所对应的线程任务列表做缓存，key是Text Expression，value则是FutureTask，用于直接获取不同的源表达式的执行任务情况；</p>
+</blockquote>
+<blockquote>
+<p>第二层ConcurrentHashMap缓存：Expression接口的基础实现类BaseExpression中，一个名为stringSegs的变量，是每个线程任务（FutureTask）里边，执行过的带实参的表达式的任务缓存，用于直接获取同一个源表达式不同实参组合的执行任务，目的是当同一个表达式的同一组入参值在调用第二遍执行引擎时，可以避免引擎重复执行表达式的运算过程（直接调FutureTask.get()方法而不用再次调FutureTask.run()方法）</p>
+</blockquote>
+<p><br>举个例子，假设我们有一个表达式，声明为expression = a + b / c;<br><br><br>当我们在传入a=1，b=2，c=3去调用表达式引擎时，引擎内部会先使用第一层ConcurrentHashMap存储：(key1: (String)”a+b/c”, value1: (FutureTask<exception>) java.util.concurrent.FutureTask@3d6eef13，key2: …)，其中java.util.concurrent.FutureTask@3d6eef13 代表一个线程实例；<br><br><br>而当执行引擎在首次执行了实参代入执行后的表达式运算任务后，第二层ConcurrentHashMap便会存储：(key1: (String)”a+b/c”, value1: (FutureTask<exception>) java.util.concurrent.FutureTask@2e6dfe61，key2: …)，其中1+2/3就是表达式a+b/c代入实参值后的表达式字段（compiled string segments），java.util.concurrent.FutureTask@2e6dfe61代表实际执行表达式运算后的一个线程任务实例。<br><br><br>第二层缓存设计目的是为了便于在下一次调用传入同样的参数组合（a=1，b=2，c=3），执行引擎可以从缓存中直接得到java.util.concurrent.FutureTask@2e6dfe61，继而调用其get()方法，直接得到表达式的运算结果，而不需要再次跑run()方法去实时运算而得到结果，从而节省运算开销。<br><br><br>在引用关系上，第二层ConcurrentHashMap是被第一层ConcurrentHashMap中的value里边的FutureTask的Expression（Expression是接口类型，对应的实现类是BaseExpression）里透过一个名为outcome的变量的引用的，透过代码debug我们可以看到这层引用关系（这也符合上文我们透过内存快照中看到的reference引用图示）：<br><br><br><br><img src="/images/post-Aviator-Expresion-Cache-OOM/20210226152019.png" alt=""><br><br><img src="/images/post-Aviator-Expresion-Cache-OOM/20210226152354.png" alt=""><br><br><br>而因为第二层的ConcurrentHashMap缓存是以带实参的表达式作为key的，而且作者并没有设置第二层缓存的上限值（第一层缓存可以指定为LRUCache指定key上限，但第二层只有一个没指定key容量上限的ConcurrentHashMap实现），那么随着不同的请求参数值传入，形成不同的实参值组合，导致ConcurrentHashMap的key不断增多，而AviatorEvaluationInstance是静态变量，一直常驻内存，即便GC之后也不会被回收，这便是产生了缓存膨胀、内存爆满的根本原因所在。而我们的业务使用场景，就是每个请求一进来都会带一个UUID型的请求ID（可以认为实参组合的数量是无穷的），最终酿成了这次缓存膨胀的故障。<br></exception></exception></p>
+
+<h2 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h2><p>既然GC无效的问题，归根到底是由于第二层ConcurrentHashMap缓存导致的，自然地，一开始想到的最简单直接的解决方案，便是不适用缓存或者删除第二层的ConcurrentHashMap即可。但如上文所提到的一个issue，<a href="https://github.com/killme2008/aviatorscript/issues/63" target="_blank" rel="noopener">循环调用AviatorEvaluator.execute的时候会出现问题</a> ，不适用缓存将会导致方法区增大（对外内存占用率增大）、且CPU占用率增高，这并不可行。<br><br><br>另一方面，通过翻查代码，发现了这个名为stringSegs的ConcurrentHashMap缓存，并没有开放API供上层调用获取该缓存对象，这下，似乎只能从它的上层引用–第一层缓存下手了，因为第一层缓存持有对第二层缓存的引用，而第一层缓存被一个静态变量所引用，所以无法释放这两层缓存的引用，导致GC后无法回收。那么只要我们清掉第一层的缓存，自然第二层也会被清理。再次review代码，发现框架有针对第一层缓存对外开放API提供直接清理这层的口子：</p>
+<p><img src="/images/post-Aviator-Expresion-Cache-OOM/202102261620315.png" alt=""></p>
+<p>而翻查Aviator这个框架的官方说明文档，找到了作者对这个框架的最佳实践指导，包括高版本针对第一层缓存的优化，可以指定使用的缓存模式为LRUCache来避免上文提到的issue（方法区缓存膨胀）及源表达式数量过大导致的堆内存膨胀：</p>
+<p><img src="/images/post-Aviator-Expresion-Cache-OOM/20210226162933.png" alt=""></p>
+<p>于是，最终决定了针对这个问题的优化方案是，对缓存进行两方面的优化处理：</p>
+<blockquote>
+<ol>
+<li>改用LRUCache指定表达式缓存，指定源表达式的key的上限，代替框架默认的ConcurrentHashMap</li>
+<li>设立定时任务，对表达式缓存进行定时清理，从而避免源表达式缓存（第一层）、带实参的表达式缓存（第二层，主要目的就是为了清理这一层）的膨胀问题</li>
+</ol>
+</blockquote>
+<figure class="highlight java"><figcaption><span>AviatorManageService</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.slf4j.Logger;</span><br><span class="line"><span class="keyword">import</span> org.slf4j.LoggerFactory;</span><br><span class="line"><span class="keyword">import</span> org.springframework.beans.factory.annotation.Autowired;</span><br><span class="line"><span class="keyword">import</span> org.springframework.context.annotation.Bean;</span><br><span class="line"><span class="keyword">import</span> org.springframework.stereotype.Service;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.googlecode.aviator.AviatorEvaluator;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AviatorManageService</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Logger logger = LoggerFactory.getLogger(AviatorManageService.class);</span><br><span class="line">	</span><br><span class="line">	<span class="meta">@Autowired</span></span><br><span class="line">	<span class="keyword">private</span> DynamicTimedTask dynamicTimedTask;</span><br><span class="line">	</span><br><span class="line">	<span class="meta">@Autowired</span></span><br><span class="line">	<span class="keyword">private</span> CacheClearHandler cacheClearHandler;</span><br><span class="line">	</span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="function"><span class="keyword">private</span> DynamicTimedTask <span class="title">initDynamicTimedTask</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> DynamicTimedTask();</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="meta">@Bean</span></span><br><span class="line">	<span class="function"><span class="keyword">private</span> CacheClearHandler <span class="title">initCacheClearHandler</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> CacheClearHandler();</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="class"><span class="keyword">class</span> <span class="title">CacheClearHandler</span> <span class="keyword">implements</span> <span class="title">Runnable</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/**</span></span><br><span class="line"><span class="comment">		 * 定时清理表达式缓存，除了清除表达式缓存，最主要目的是为了清除表达式缓存中引用的执行任务（FutureTask）的缓存stringSegs</span></span><br><span class="line"><span class="comment">		 */</span></span><br><span class="line">		<span class="meta">@Override</span></span><br><span class="line">		<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">			AviatorEvaluator.getInstance().clearExpressionCache();</span><br><span class="line">			logger.info(<span class="string">"clear_aviator_expression_cache, future=&#123;&#125;"</span>, <span class="keyword">this</span>.toString());</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">initAviatorInstance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		setInstanceLRUCache();</span><br><span class="line">		scheduleResetAviatorCache();</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">/**</span></span><br><span class="line"><span class="comment">	 * 设定缓存模式为LRUCache</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="function"><span class="keyword">private</span> <span class="keyword">int</span> <span class="title">setInstanceLRUCache</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="keyword">int</span> capacity = ConfigManager.getInteger(ConfigConstants.AVIATOR_EXPRESSION_CACHE_LRU_CAPACITY);</span><br><span class="line">		</span><br><span class="line">		<span class="keyword">if</span>( capacity &gt; <span class="number">0</span> ) &#123;</span><br><span class="line">			AviatorEvaluator.getInstance().useLRUExpressionCache(capacity);</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		<span class="keyword">return</span> capacity;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">scheduleResetAviatorCache</span><span class="params">(String cron)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">if</span>( <span class="keyword">null</span> != cron &amp;&amp; <span class="string">""</span>.equals(cron) ) &#123;</span><br><span class="line">			dynamicTimedTask.startTask(cron, cacheClearHandler);</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			dynamicTimedTask.stopTask();</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">scheduleResetAviatorCache</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		String cron = ConfigManager.getString(ConfigConstants.AVIATOR_EXPRESSION_CACHE_CLEAR_CRON);</span><br><span class="line">		scheduleResetAviatorCache(cron);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h1><ul>
+<li><a href="https://www.yuque.com/boyan-avfmj/aviatorscript/ou23gy" target="_blank" rel="noopener">Aviator框架使用最佳实践</a></li>
+<li><a href="https://www.yuque.com/boyan-avfmj/aviatorscript/fycwgt" target="_blank" rel="noopener">Aviator脚本编译和执行</a></li>
+<li><a href="https://github.com/killme2008/aviatorscript/issues/63" target="_blank" rel="noopener">循环调用AviatorEvaluator.execute的时候会出现问题</a></li>
+</ul>
+</section>
+    <!-- Tags START -->
+    
+      <div class="tags">
+        <span>Tags:</span>
+        
+  <a href="/tags#Google" >
+    <span class="tag-code">Google</span>
+  </a>
+
+  <a href="/tags#Aviator" >
+    <span class="tag-code">Aviator</span>
+  </a>
+
+  <a href="/tags#Expression" >
+    <span class="tag-code">Expression</span>
+  </a>
+
+  <a href="/tags#表达式" >
+    <span class="tag-code">表达式</span>
+  </a>
+
+  <a href="/tags#Cache" >
+    <span class="tag-code">Cache</span>
+  </a>
+
+  <a href="/tags#缓存" >
+    <span class="tag-code">缓存</span>
+  </a>
+
+  <a href="/tags#内存膨胀" >
+    <span class="tag-code">内存膨胀</span>
+  </a>
+
+  <a href="/tags#GC Overhead limit exceeded" >
+    <span class="tag-code">GC Overhead limit exceeded</span>
+  </a>
+
+  <a href="/tags#OutOfMemoryError" >
+    <span class="tag-code">OutOfMemoryError</span>
+  </a>
+
+  <a href="/tags#OOM" >
+    <span class="tag-code">OOM</span>
+  </a>
+
+      </div>
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2019/06/22/RocketMQ-High-Available/">
+        <span class="nav-arrow">← </span>
+        
+          RocketMQ-高可用
+        
+      </a>
+    
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <!--<div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>-->
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- No Comment -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#背景"><span class="toc-nav-text">背景</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Aviator简介"><span class="toc-nav-text">Aviator简介</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Aviator表达式的使用场景"><span class="toc-nav-text">Aviator表达式的使用场景</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#问题暴露"><span class="toc-nav-text">问题暴露</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#问题处理"><span class="toc-nav-text">问题处理</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#即时处理"><span class="toc-nav-text">即时处理</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#原因定位及分析"><span class="toc-nav-text">原因定位及分析</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#解决方案"><span class="toc-nav-text">解决方案</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#附录"><span class="toc-nav-text">附录</span></a></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'http://yoursite.com/2021/02/26/Aviator-Expression-Cache-OOM/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+     // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', 'http://file.muyutech.com/error-img.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== 'http://file.muyutech.com/error-img.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+        
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+
+    // qrcode
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+
+    // gitment
+    var gitmentConfig = "fgu123";
+    if (gitmentConfig !== 'undefined') {
+      var gitment = new Gitment({
+        id: "Google Aviator的表达式缓存膨胀问题",
+        owner: "fgu123",
+        repo: "fgu123.github.io",
+        oauth: {
+          client_id: "0f87e490e00ee3fd87ef",
+          client_secret: "4a9d2b148e7971c2201ad12131ce8bf8159ccd2e"
+        },
+        theme: {
+          render(state, instance) {
+            const container = document.createElement('div')
+            container.lang = "en-US"
+            container.className = 'gitment-container gitment-root-container'
+            container.appendChild(instance.renderHeader(state, instance))
+            container.appendChild(instance.renderEditor(state, instance))
+            container.appendChild(instance.renderComments(state, instance))
+            container.appendChild(instance.renderFooter(state, instance))
+            return container;
+          }
+        }
+      })
+      gitment.render(document.getElementById('comments'))
+    }
+  })();
+</script>
+
+<script>
+  var disqus_shortname = '';
+  
+  var disqus_url = 'http://yoursite.com/2021/02/26/Aviator-Expression-Cache-OOM/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2023 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+<script src="/js/script.js"></script>
+  </body>
+</html>

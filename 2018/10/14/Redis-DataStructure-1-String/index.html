@@ -16,13 +16,17 @@
   <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
   <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+  
+<link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/plugins/gitment.css">
+
   <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
   <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
   <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
-  <script src="/js/qrious.js"></script>
+  
+<script src="/js/qrious.js"></script>
 <script src="/js/gitment.js"></script>
+
   
   
     <!-- MathJax support START -->
@@ -49,7 +53,7 @@
   
 
 
-</head>
+<meta name="generator" content="Hexo 7.1.1"></head>
 <div class="wechat-share">
   <img src="/css/images/logo.png" />
 </div>
@@ -147,11 +151,16 @@
 <main class="app-body flex-box">
   <!-- Article START -->
   <article class="post-article">
-    <section class="markdown-content"><h2 id="String"><a href="#String" class="headerlink" title="String"></a>String</h2><p>&emsp;&emsp;String是我们最常用的Redis基本数据结构之一。Redis没有直接使用C语言传统的字符串表示（以空字符结尾的字符数组，以下简称C字符串），而是自己构建了一种名为简单动态字符串（simple dynamic string，SDS）的抽象类型，并将SDS用作Redis的默认字符串表示。<br>&emsp;&emsp;在Redis里边，C字符串只会作为字符串字面量用在一些无须对字符串值进行修改的地方，比如打印日志：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redisLog(REDIS_WARNING, &quot;Redis is now ready to exit, bye bye...&quot;);</span><br></pre></td></tr></table></figure></p>
-<h2 id="SDS与C字符串的区别"><a href="#SDS与C字符串的区别" class="headerlink" title="SDS与C字符串的区别"></a>SDS与C字符串的区别</h2><h3 id="常数级复杂度获取字符串长度"><a href="#常数级复杂度获取字符串长度" class="headerlink" title="常数级复杂度获取字符串长度"></a>常数级复杂度获取字符串长度</h3><p>&emsp;&emsp;C语言使用长度为N+1的字符串来表示长度为N的字符串，并且字符数组的最后一个元素总是空字符’\0’<br><br><img src="/images/post-Redis-DataStructure-1-String/20181014173701.jpg" alt="C字符串"><br>&emsp;&emsp;因为C字符串并不记录自身的长度信息，所以为了获取一个C字符串的长度，程序必须便利整个字符数组，对遇到的每个字符进行技术，直到遇到代表字符串结尾的空字符为止，这个操作的复杂度为O(N)<br><img src="/images/post-Redis-DataStructure-1-String/20181014180720.jpg" alt="#计算C字符串长度的过程"><br>&emsp;&emsp;和C字符串不同，因为SDS在len属性中记录了SDS本身的长度，所以获取一个SDS长度的复杂度仅为O(1)，这确保了获取字符串长度的操作不会成为Redis的性能瓶颈。譬如”Redis”的长度为5，程序只需要访问SDS的len属性就可以立即得到长度值为5字节<br><img src="/images/post-Redis-DataStructure-1-String/20181014180419.jpg" alt="#5字节长的SDS"></p>
-<h3 id="杜绝缓冲区溢出"><a href="#杜绝缓冲区溢出" class="headerlink" title="杜绝缓冲区溢出"></a>杜绝缓冲区溢出</h3><p>&emsp;&emsp;由于C字符串不记录自身长度，会带来另一个问题，就是容易造成缓冲区溢出。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">char *strcat(char *dest, const char *src)</span><br></pre></td></tr></table></figure></p>
+    <section class="markdown-content"><h2 id="String"><a href="#String" class="headerlink" title="String"></a>String</h2><p>&emsp;&emsp;String是我们最常用的Redis基本数据结构之一。Redis没有直接使用C语言传统的字符串表示（以空字符结尾的字符数组，以下简称C字符串），而是自己构建了一种名为简单动态字符串（simple dynamic string，SDS）的抽象类型，并将SDS用作Redis的默认字符串表示。<br>&emsp;&emsp;在Redis里边，C字符串只会作为字符串字面量用在一些无须对字符串值进行修改的地方，比如打印日志：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">redisLog(REDIS_WARNING, &quot;Redis is now ready to exit, bye bye...&quot;);</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="SDS与C字符串的区别"><a href="#SDS与C字符串的区别" class="headerlink" title="SDS与C字符串的区别"></a>SDS与C字符串的区别</h2><h3 id="常数级复杂度获取字符串长度"><a href="#常数级复杂度获取字符串长度" class="headerlink" title="常数级复杂度获取字符串长度"></a>常数级复杂度获取字符串长度</h3><p>&emsp;&emsp;C语言使用长度为N+1的字符串来表示长度为N的字符串，并且字符数组的最后一个元素总是空字符’\0’<br/><br><img src="/images/post-Redis-DataStructure-1-String/20181014173701.jpg" alt="C字符串"><br>&emsp;&emsp;因为C字符串并不记录自身的长度信息，所以为了获取一个C字符串的长度，程序必须便利整个字符数组，对遇到的每个字符进行技术，直到遇到代表字符串结尾的空字符为止，这个操作的复杂度为O(N)<br><img src="/images/post-Redis-DataStructure-1-String/20181014180720.jpg" alt="#计算C字符串长度的过程"><br>&emsp;&emsp;和C字符串不同，因为SDS在len属性中记录了SDS本身的长度，所以获取一个SDS长度的复杂度仅为O(1)，这确保了获取字符串长度的操作不会成为Redis的性能瓶颈。譬如”Redis”的长度为5，程序只需要访问SDS的len属性就可以立即得到长度值为5字节<br><img src="/images/post-Redis-DataStructure-1-String/20181014180419.jpg" alt="#5字节长的SDS"></p>
+<h3 id="杜绝缓冲区溢出"><a href="#杜绝缓冲区溢出" class="headerlink" title="杜绝缓冲区溢出"></a>杜绝缓冲区溢出</h3><p>&emsp;&emsp;由于C字符串不记录自身长度，会带来另一个问题，就是容易造成缓冲区溢出。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">char *strcat(char *dest, const char *src)</span><br></pre></td></tr></table></figure>
 <p>&emsp;&emsp;假定用户在执行strcat函数时，已经为dest分配了足够多的内存，则可以容纳src字符串中的所有内容，而一旦这个假定不成立时，就会产生缓冲区溢出。<br>&emsp;&emsp;举个例子，假设程序里有两个在内存中紧邻着的C字符串s1和s2，其中s1保存了字符串”Redis”，而s2则保存了字符串”MongoDB”，如图所示：<br><img src="/images/post-Redis-DataStructure-1-String/20181014183933.jpg" alt="在内存中紧邻的两个C字符串"></p>
-<p>&emsp;&emsp;如果此时要通过执行：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strcat(s1, &quot; Cluster&quot;);</span><br></pre></td></tr></table></figure></p>
+<p>&emsp;&emsp;如果此时要通过执行：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strcat(s1, &quot; Cluster&quot;);</span><br></pre></td></tr></table></figure>
 <p>将s1的内容修改为”Redis Cluster”，但如果粗心的他却忘了在执行strcat之前为s1分配足够的空间，那么在strcat函数执行之后，s1的数据将溢出到s2所在的空间中，导致s2的内容被意外地修改了，如图所示：<br><img src="/images/post-Redis-DataStructure-1-String/20181014184447.jpg" alt="#s1的内容溢出到了s2所在的位置上"></p>
 <p>&emsp;&emsp;SDS的空间分配策略则完全杜绝了发生这种情况的可能性：当SDS API需要对SDS的内容进行修改时，API会先检查SDS的空间是否满足修改所需的要求，如果不满足的话，API会自动把SDS的空间扩展至执行修改所需的大小，然后才执行实际的修改操作，所以使用SDS既不需要手动修改SDS的空间大小，也不会出现上述的缓冲区溢出问题。</p>
 <h3 id="减少修改字符串时带来的内容重分配次数"><a href="#减少修改字符串时带来的内容重分配次数" class="headerlink" title="减少修改字符串时带来的内容重分配次数"></a>减少修改字符串时带来的内容重分配次数</h3><p>&emsp;&emsp;因为C字符串并不记录自身的长度，所以一个C字符串的底层实现总是额外的多出一个字符空间用于保存空字符。因为C字符串的长度和底层数组长度之间存在着这种关联性，所以每次增长或缩短一个C字符串，都总会在保存这个C字符串的数组时引起一次内存重分配操作</p>
@@ -161,7 +170,7 @@
 </ul>
 <p>&emsp;&emsp;为了避免C字符串的这种缺陷，SDS通过未使用空间解除了字符串长度和底层数组长度之间的关联：在SDS中，buf数组的长度不一定就是字符数加1，数组里边可以包含未使用的字节，而这些字节的数量就由SDS的free属性记录<br>&emsp;&emsp;通过未使用空间，SDS实现了空间预分配和惰性空间释放两种优化策略：</p>
 <ol>
-<li><p>空间预分配<br>&emsp;&emsp;空间预分配用于优化SDS的字符串增长操作：利用额外的未使用空间进行预分配以减少内存的频繁分配，这一点类似Java中的ArrayList。<br>&emsp;&emsp;当字符串长度小于 1M 时，扩容都是加倍现有的空间，如果超过 1M，扩容时一次只会多扩 1M 的空间。而字符串最大长度为 512M。<br>譬如，假如SDS进行修改后变为13字节（小于1MB），那么此时SDS的buf数组的实际长度将变成13+13+1=27字节（额外的1字节用于保存空字符）。假如SDS进行修改后变为2MB（大于等于1MB），则程序将会分配1MB的未使用空间，也就是说，SDS的buf数组的实际长度将为2MB + 1MB + 1byte。</p>
+<li><p>空间预分配<br>&emsp;&emsp;空间预分配用于优化SDS的字符串增长操作：利用额外的未使用空间进行预分配以减少内存的频繁分配，这一点类似Java中的ArrayList。<br>&emsp;&emsp;当字符串长度小于 1M 时，扩容都是加倍现有的空间，如果超过 1M，扩容时一次只会多扩 1M 的空间。而字符串最大长度为 512M。<br>譬如，假如SDS进行修改后变为13字节（小于1MB），那么此时SDS的buf数组的实际长度将变成13+13+1&#x3D;27字节（额外的1字节用于保存空字符）。假如SDS进行修改后变为2MB（大于等于1MB），则程序将会分配1MB的未使用空间，也就是说，SDS的buf数组的实际长度将为2MB + 1MB + 1byte。</p>
 </li>
 <li><p>惰性空间释放<br>&emsp;&emsp;当要缩短SDS保存的字符串时，程序并不立即使用内存充分配来回收缩短后多出来的字节，而是使用表头的free成员将这些字节记录起来以备用。</p>
 </li>
@@ -249,7 +258,7 @@
   <div class="toc-main">
     <strong class="toc-title">Catalog</strong>
     
-      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#String"><span class="toc-nav-text">String</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#SDS与C字符串的区别"><span class="toc-nav-text">SDS与C字符串的区别</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#常数级复杂度获取字符串长度"><span class="toc-nav-text">常数级复杂度获取字符串长度</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#杜绝缓冲区溢出"><span class="toc-nav-text">杜绝缓冲区溢出</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#减少修改字符串时带来的内容重分配次数"><span class="toc-nav-text">减少修改字符串时带来的内容重分配次数</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#二进制安全"><span class="toc-nav-text">二进制安全</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#兼容部分C字符串函数"><span class="toc-nav-text">兼容部分C字符串函数</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#总结"><span class="toc-nav-text">总结</span></a></li></ol></li></ol>
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#String"><span class="toc-nav-text">String</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#SDS%E4%B8%8EC%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="toc-nav-text">SDS与C字符串的区别</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E5%B8%B8%E6%95%B0%E7%BA%A7%E5%A4%8D%E6%9D%82%E5%BA%A6%E8%8E%B7%E5%8F%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E9%95%BF%E5%BA%A6"><span class="toc-nav-text">常数级复杂度获取字符串长度</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E6%9D%9C%E7%BB%9D%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BA%A2%E5%87%BA"><span class="toc-nav-text">杜绝缓冲区溢出</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E5%87%8F%E5%B0%91%E4%BF%AE%E6%94%B9%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%97%B6%E5%B8%A6%E6%9D%A5%E7%9A%84%E5%86%85%E5%AE%B9%E9%87%8D%E5%88%86%E9%85%8D%E6%AC%A1%E6%95%B0"><span class="toc-nav-text">减少修改字符串时带来的内容重分配次数</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E4%BA%8C%E8%BF%9B%E5%88%B6%E5%AE%89%E5%85%A8"><span class="toc-nav-text">二进制安全</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E5%85%BC%E5%AE%B9%E9%83%A8%E5%88%86C%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%87%BD%E6%95%B0"><span class="toc-nav-text">兼容部分C字符串函数</span></a></li><li class="toc-nav-item toc-nav-level-3"><a class="toc-nav-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-nav-text">总结</span></a></li></ol></li></ol>
     
   </div>
 </aside>
@@ -359,7 +368,7 @@
 </div>
     <footer class="app-footer">
   <p class="copyright">
-    &copy; 2023 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    &copy; 2024 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
     <br>
     Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
   </p>
@@ -402,6 +411,8 @@
 </script>
 <!-- Baidu Tongji -->
 
+
 <script src="/js/script.js"></script>
+
   </body>
 </html>

@@ -16,13 +16,17 @@
   <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
   <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+  
+<link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/plugins/gitment.css">
+
   <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
   <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
   <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
-  <script src="/js/qrious.js"></script>
+  
+<script src="/js/qrious.js"></script>
 <script src="/js/gitment.js"></script>
+
   
   
     <!-- MathJax support START -->
@@ -49,7 +53,7 @@
   
 
 
-</head>
+<meta name="generator" content="Hexo 7.1.1"></head>
 <div class="wechat-share">
   <img src="/css/images/logo.png" />
 </div>
@@ -148,18 +152,23 @@
   <!-- Article START -->
   <article class="post-article">
     <section class="markdown-content"><h1 id="Spring事务传播机制"><a href="#Spring事务传播机制" class="headerlink" title="Spring事务传播机制"></a>Spring事务传播机制</h1><p>Spring管理的事务是逻辑事务，而且物理事务和逻辑事务最大差别就在于事务传播行为，事务传播行为用于指定在多个事务方法间调用时，事务是如何在这些方法间传播的。</p>
-<p></p><p><br>下面以a.save()里调用了b.save()举例，事务方法之间调用时事务如何传播。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">A</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Autowired</span></span><br><span class="line">	<span class="keyword">private</span> B b;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Transactional</span>(propagation=Propagation.XXX)</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">save</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="comment">// ...</span></span><br><span class="line">		b.save();</span><br><span class="line">		<span class="comment">// ...</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">B</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Transactional</span>(propagation=Propagation.XXX)</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">save</span><span class="params">()</span> </span>&#123;</span><br><span class="line">		<span class="comment">// ...</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="1-REQUIRED"><a href="#1-REQUIRED" class="headerlink" title="1. REQUIRED"></a>1. REQUIRED</h2><p>默认的spring事务传播级别，使用该级别的特点是，如果上下文中已经存在事务，那么就加入到事务中执行，如果当前上下文中不存在事务，则新建事务执行。如下图：<br><img src="/images/post-Spring-Transaction-Propagation/required-20190319055811.png" alt=""><br>由于两个方法属于同一个物理事务，如果发生回滚，则两者都回滚。</p>
-<h2 id="2-SUPPORTS"><a href="#2-SUPPORTS" class="headerlink" title="2. SUPPORTS"></a>2. SUPPORTS</h2><p>顾名思义就是可以支持事务，如果b.save()在事务环境中运行，则以事务形式运行，否则以非事务运行。<br><strong><br>注：这里所谓的非事务形式的数据库访问只是指没有显式的事务边界而已，就是说数据库操作只是 auto-commit 的方式，在数据库的物理事务概念上，还是有事务的。譬如在这里，a.save()调用b.save()，如果当a是非事务执行（非手动提交事务，而是auto-commit），那么b.save()在执行前，a.save()的物理事务就要先提交，而同时，b.save()的物理事务也是auto-commit，这样才是这里说的b.save()以非事务方法运行，而不是指b.save()不开启数据库物理事务。而所谓的b.save()在事务环境中运行，是指当b的外层a.save()本身是手动提交事务时，b.save()也会包含在a.save()里边的同一个事务去执行，也就是说a.save()与b.save()的SQL操作在同一个物理事务中。<br></strong><br><img src="/images/post-Spring-Transaction-Propagation/supports-20190319055812.png" alt=""></p>
-<h2 id="3-MANDATORY"><a href="#3-MANDATORY" class="headerlink" title="3. MANDATORY"></a>3. MANDATORY</h2><p>必须在一个事务中运行，也就是说，b.save()只能在已有事务的方法中被调用，否则会抛异常。<br><img src="/images/post-Spring-Transaction-Propagation/mandatory-20190319055813.png" alt=""></p>
-<h2 id="4-REQUIRES-NEW"><a href="#4-REQUIRES-NEW" class="headerlink" title="4. REQUIRES_NEW"></a>4. REQUIRES_NEW</h2><p>总是会创建一个新事务（包括物理事务），该传播级别的特点是，每次都会新建一个事务，并且同时将上下文中的事务挂起，执行当前新建事务完成以后，上下文事务恢复再执行。如下图：<br><img src="/images/post-Spring-Transaction-Propagation/requires_new-20190319055814.png" alt=""><br>两个方法之间既不属于同一个逻辑事务也不属于同一个物理事务。</p>
-<h2 id="5-NOT-SUPPORTED"><a href="#5-NOT-SUPPORTED" class="headerlink" title="5. NOT_SUPPORTED"></a>5. NOT_SUPPORTED</h2><p>顾名思义不支持事务，当处于存在事务的上下文环境中运行时，b.save()会暂停当前已开启的事务，意味着a.save()的事务被挂起直至b.save()以非事务方法运行完毕后，a.save()的事务继续执行。<br><img src="/images/post-Spring-Transaction-Propagation/not_supported-20190319055815.png" alt=""></p>
-<h2 id="6-NEVER"><a href="#6-NEVER" class="headerlink" title="6. NEVER"></a>6. NEVER</h2><p>绝不能在事务环境中运行，如果a.save()里声明了使用事务，而b.save()的事务类型声明为never，那么只能以抛异常告终。<br><img src="/images/post-Spring-Transaction-Propagation/never-20190319055816.png" alt=""><br>与Mandatory相反，Mandatory意思是强制要求上下文中有事务（外层有事务），否则抛异常，而Never是上下文中不能有事务（外层无事务），否则抛异常。</p>
-<h2 id="7-NESTED"><a href="#7-NESTED" class="headerlink" title="7. NESTED"></a>7. NESTED</h2><p>嵌套事务支持。该传播级别特征是，如果上下文中存在事务，则嵌套事务执行，如果不存在事务，则新建事务。<br><img src="/images/post-Spring-Transaction-Propagation/nested-20190319055817.png" alt=""><br>Nested和RequiresNew的区别：</p>
+<p>
+下面以a.save()里调用了b.save()举例，事务方法之间调用时事务如何传播。
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">A</span> &#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Autowired</span></span><br><span class="line">	<span class="keyword">private</span> B b;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Transactional(propagation=Propagation.XXX)</span></span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">save</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="comment">// ...</span></span><br><span class="line">		b.save();</span><br><span class="line">		<span class="comment">// ...</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Service</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">B</span> &#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Transactional(propagation=Propagation.XXX)</span></span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">save</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="comment">// ...</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="1-REQUIRED"><a href="#1-REQUIRED" class="headerlink" title="1. REQUIRED"></a>1. REQUIRED</h2><p>默认的spring事务传播级别，使用该级别的特点是，如果上下文中已经存在事务，那么就加入到事务中执行，如果当前上下文中不存在事务，则新建事务执行。如下图：<br><img src="/images/post-Spring-Transaction-Propagation/required-20190319055811.png"><br>由于两个方法属于同一个物理事务，如果发生回滚，则两者都回滚。</p>
+<h2 id="2-SUPPORTS"><a href="#2-SUPPORTS" class="headerlink" title="2. SUPPORTS"></a>2. SUPPORTS</h2><p>顾名思义就是可以支持事务，如果b.save()在事务环境中运行，则以事务形式运行，否则以非事务运行。<br><strong><br>注：这里所谓的非事务形式的数据库访问只是指没有显式的事务边界而已，就是说数据库操作只是 auto-commit 的方式，在数据库的物理事务概念上，还是有事务的。譬如在这里，a.save()调用b.save()，如果当a是非事务执行（非手动提交事务，而是auto-commit），那么b.save()在执行前，a.save()的物理事务就要先提交，而同时，b.save()的物理事务也是auto-commit，这样才是这里说的b.save()以非事务方法运行，而不是指b.save()不开启数据库物理事务。而所谓的b.save()在事务环境中运行，是指当b的外层a.save()本身是手动提交事务时，b.save()也会包含在a.save()里边的同一个事务去执行，也就是说a.save()与b.save()的SQL操作在同一个物理事务中。<br></strong><br><img src="/images/post-Spring-Transaction-Propagation/supports-20190319055812.png"></p>
+<h2 id="3-MANDATORY"><a href="#3-MANDATORY" class="headerlink" title="3. MANDATORY"></a>3. MANDATORY</h2><p>必须在一个事务中运行，也就是说，b.save()只能在已有事务的方法中被调用，否则会抛异常。<br><img src="/images/post-Spring-Transaction-Propagation/mandatory-20190319055813.png"></p>
+<h2 id="4-REQUIRES-NEW"><a href="#4-REQUIRES-NEW" class="headerlink" title="4. REQUIRES_NEW"></a>4. REQUIRES_NEW</h2><p>总是会创建一个新事务（包括物理事务），该传播级别的特点是，每次都会新建一个事务，并且同时将上下文中的事务挂起，执行当前新建事务完成以后，上下文事务恢复再执行。如下图：<br><img src="/images/post-Spring-Transaction-Propagation/requires_new-20190319055814.png"><br>两个方法之间既不属于同一个逻辑事务也不属于同一个物理事务。</p>
+<h2 id="5-NOT-SUPPORTED"><a href="#5-NOT-SUPPORTED" class="headerlink" title="5. NOT_SUPPORTED"></a>5. NOT_SUPPORTED</h2><p>顾名思义不支持事务，当处于存在事务的上下文环境中运行时，b.save()会暂停当前已开启的事务，意味着a.save()的事务被挂起直至b.save()以非事务方法运行完毕后，a.save()的事务继续执行。<br><img src="/images/post-Spring-Transaction-Propagation/not_supported-20190319055815.png"></p>
+<h2 id="6-NEVER"><a href="#6-NEVER" class="headerlink" title="6. NEVER"></a>6. NEVER</h2><p>绝不能在事务环境中运行，如果a.save()里声明了使用事务，而b.save()的事务类型声明为never，那么只能以抛异常告终。<br><img src="/images/post-Spring-Transaction-Propagation/never-20190319055816.png"><br>与Mandatory相反，Mandatory意思是强制要求上下文中有事务（外层有事务），否则抛异常，而Never是上下文中不能有事务（外层无事务），否则抛异常。</p>
+<h2 id="7-NESTED"><a href="#7-NESTED" class="headerlink" title="7. NESTED"></a>7. NESTED</h2><p>嵌套事务支持。该传播级别特征是，如果上下文中存在事务，则嵌套事务执行，如果不存在事务，则新建事务。<br><img src="/images/post-Spring-Transaction-Propagation/nested-20190319055817.png"><br>Nested和RequiresNew的区别：</p>
 <ul>
 <li>RequiresNew每次都创建新的独立的物理事务，而Nested只有一个物理事务；Nested嵌套事务回滚或提交不会导致外部事务回滚或提交，但外部事务回滚将导致嵌套事务回滚，而RequiresNew由于都是全新的事务，所以之间是无关联的</li>
-<li>Nested使用JDBC 3的保存点实现，即如果使用低版本驱动将导致不支持嵌套事务<br><p><br><strong>使用嵌套事务，必须确保具体事务管理器实现的nestedTransactionAllowed属性为true，否则不支持嵌套事务，如DataSourceTransactionManager默认支持，而HibernateTransactionManager默认不支持，需要我们来开启。</strong></p></li>
+<li>Nested使用JDBC 3的保存点实现，即如果使用低版本驱动将导致不支持嵌套事务<p>
+<strong>使用嵌套事务，必须确保具体事务管理器实现的nestedTransactionAllowed属性为true，否则不支持嵌套事务，如DataSourceTransactionManager默认支持，而HibernateTransactionManager默认不支持，需要我们来开启。</strong></li>
 </ul>
 </section>
     <!-- Tags START -->
@@ -244,7 +253,7 @@
   <div class="toc-main">
     <strong class="toc-title">Catalog</strong>
     
-      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#Spring事务传播机制"><span class="toc-nav-text">Spring事务传播机制</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#1-REQUIRED"><span class="toc-nav-text">1. REQUIRED</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#2-SUPPORTS"><span class="toc-nav-text">2. SUPPORTS</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#3-MANDATORY"><span class="toc-nav-text">3. MANDATORY</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#4-REQUIRES-NEW"><span class="toc-nav-text">4. REQUIRES_NEW</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#5-NOT-SUPPORTED"><span class="toc-nav-text">5. NOT_SUPPORTED</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#6-NEVER"><span class="toc-nav-text">6. NEVER</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#7-NESTED"><span class="toc-nav-text">7. NESTED</span></a></li></ol></li></ol>
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#Spring%E4%BA%8B%E5%8A%A1%E4%BC%A0%E6%92%AD%E6%9C%BA%E5%88%B6"><span class="toc-nav-text">Spring事务传播机制</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#1-REQUIRED"><span class="toc-nav-text">1. REQUIRED</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#2-SUPPORTS"><span class="toc-nav-text">2. SUPPORTS</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#3-MANDATORY"><span class="toc-nav-text">3. MANDATORY</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#4-REQUIRES-NEW"><span class="toc-nav-text">4. REQUIRES_NEW</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#5-NOT-SUPPORTED"><span class="toc-nav-text">5. NOT_SUPPORTED</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#6-NEVER"><span class="toc-nav-text">6. NEVER</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#7-NESTED"><span class="toc-nav-text">7. NESTED</span></a></li></ol></li></ol>
     
   </div>
 </aside>
@@ -354,7 +363,7 @@
 </div>
     <footer class="app-footer">
   <p class="copyright">
-    &copy; 2023 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    &copy; 2024 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
     <br>
     Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
   </p>
@@ -397,6 +406,8 @@
 </script>
 <!-- Baidu Tongji -->
 
+
 <script src="/js/script.js"></script>
+
   </body>
 </html>

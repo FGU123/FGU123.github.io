@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+  <meta name="description" content="ppxu&#39;s blog">
+  <meta name="keyword" content="java, blog, article">
+  
+    <link rel="shortcut icon" href="/css/images/logo.png">
+  
+  <title>
+    
+      Dubbo配置连接数过大导致CPU飙升、OOM | PPXu
+    
+  </title>
+  <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
+  <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
+  
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/plugins/gitment.css">
+
+  <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
+  <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
+  <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
+  
+<script src="/js/qrious.js"></script>
+<script src="/js/gitment.js"></script>
+
+  
+  
+    <!-- MathJax support START -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <!-- MathJax support END -->
+  
+
+
+<meta name="generator" content="Hexo 7.1.1"></head>
+<div class="wechat-share">
+  <img src="/css/images/logo.png" />
+</div>
+
+  <body>
+    <header class="header fixed-header">
+  <div class="header-container">
+    <a class="home-link" href="/">
+      <div class="logo"></div>
+      <span>PPXu</span>
+    </a>
+    <ul class="right-list">
+      
+        <li class="list-item">
+          
+            <a href="/" class="item-link">Home</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/tags/" class="item-link">Tags</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/archives/" class="item-link">Archives</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/search" class="item-link">Search</a>
+          
+        </li>
+      
+        <li class="list-item">
+          
+            <a href="/about/" class="item-link">About</a>
+          
+        </li>
+      
+    </ul>
+    <div class="menu">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </div>
+    <div class="menu-mask">
+      <ul class="menu-list">
+        
+          <li class="menu-item">
+            
+              <a href="/" class="menu-link">Home</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/tags/" class="menu-link">Tags</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/archives/" class="menu-link">Archives</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/search" class="menu-link">Search</a>
+            
+          </li>
+        
+          <li class="menu-item">
+            
+              <a href="/about/" class="menu-link">About</a>
+            
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</header>
+
+    <div id="article-banner">
+  <h2>Dubbo配置连接数过大导致CPU飙升、OOM</h2>
+  <p class="post-date">2024-01-18</p>
+  <div class="arrow-down">
+    <a href="javascript:;"></a>
+  </div>
+</div>
+<main class="app-body flex-box">
+  <!-- Article START -->
+  <article class="post-article">
+    <section class="markdown-content"><h1 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h1><h2 id="Dubbo服务上下游情况"><a href="#Dubbo服务上下游情况" class="headerlink" title="Dubbo服务上下游情况"></a>Dubbo服务上下游情况</h2><p>1.背景<br>公司项目，Dubbo上游服务在元旦前夕流量突增，为应对突增流量带来的压力，上游（consumer）节点服务临时扩容一倍机器数量，而扩容操作完成之后，后续出现下游的部分（provider）节点服务器抛出异常，表现为下游机器的CPU使用率飙高达至大于100%的水平（远高于正常水平），机器在运行一段时间后，出现堆内存溢出（Out Of Memory: Java Heap Space），此时机器实际上已经不能正常服务于上游，继而机器很快地会被服务器容器（docker）预设的OOM killer程序强制杀死JVM进程，服务器所在容器的实例进入“未就绪”状态，随后实例被销毁、回收，继而导致上游调用超时或失败并且引起监控侧的告警，影响业务正常运行。</p>
+<h2 id="问题暴露"><a href="#问题暴露" class="headerlink" title="问题暴露"></a>问题暴露</h2><p>问题表现有二：<br>现象1：重启下游机器后，CPU使用率瞬间飙高，超100%以上（约5个线程并行占用CPU 70% ~ 100%，因为是docker容器虚拟化环境，所以top命令显示出来简单合计为约350% ~ 500%的占用率）</p>
+<p><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_025107.png"></p>
+<p>现象2：服务器在持续高负载下运行一段时间后，日志一直打印OOM（堆溢出）错误，继而机器进入“未就绪”状态（不可服务状态）<br>–堆栈截图过于模糊，图略</p>
+<h2 id="现场处理"><a href="#现场处理" class="headerlink" title="现场处理"></a>现场处理</h2><p>即时通过Dubbo服务治理将下游出现问题的机器禁用，禁止上游机器流量进入下游的问题机器，将有问题的机器保留现场，并且由于JVM启动参数有配置OOM自动生成并导出dump堆栈（-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath&#x3D;&#x2F;tmp&#x2F;data），OOM文件作为问题排查的线索。</p>
+<h2 id="原因定位及分析"><a href="#原因定位及分析" class="headerlink" title="原因定位及分析"></a>原因定位及分析</h2><p>初时因为出现OOM，我们开发团队的排查方向很自然地被带到了分析内存，由Dump文件入手分析当时内存状态。<br>但分析内存过程中，出现排查难的困境，主要原因在于：</p>
+<ol>
+<li><p>内存快照文件（Dump文件）过大：Dump文件反映的是服务器内存的状态，其文件内容就是当时整个堆内存的快照，而我们的服务器分配的内存是4G（正常水平），所以导出的文件有4G之大。这为文件的导出、下载等带来各种实质操作上的难度。</p>
+</li>
+<li><p>Dump文件只在容器里短暂存留：由于我们的服务器配置了OOM的自动Dump配置，当发生OOM时系统会自动导出Dump文件，但由于运维机制，此时机器很快会被OOM Kiler程序强制杀死JVM进程，服务器所在容器实例进入“未就绪”状态，不多久该服务器实例即会被销毁、回收。故Dump文件如果不及时导出（上传至云盘或外部存储），那么Dump文件将不复存在。<br>在多番努力尝试下，终于导出Dump文件，但此时发现，对内存的分析，所得到的有用信息，并不多。我们充其量只知道，当时对堆内存占用较多的一些实例对象，都是些正常的基础对象实例（char数组、byte数组、string、hashmap等）、业务对象实例等。</p>
+</li>
+</ol>
+<p><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_032701.png"></p>
+<p>于是转到直接正面排查CPU飙高的问题，通过线上诊断工具（Arthas工具，由于线上容器实例默认无安装Arthas，此前实际上还花费了些时间折腾了一阵子工具的安装配置）来直接定位到当时占用CPU最高的3条线程，发现3条线程的调用栈均一致（事实上是不止3条，当时有5条类似的线程，都在跑同样的任务），如下图：</p>
+<p><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_033740.png"></p>
+<p><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_035215.png"></p>
+<p>通过Arthas列出这条最耗CPU资源的线程正在跑的堆栈，与我们导出的火焰图（性能分析图）所描述的堆栈，也完全一致。</p>
+<p><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_040304.png"></p>
+<p>这段堆栈信息，所指向的代码，并非业务代码，而是Dubbo微服务框架的代码。</p>
+<p>Dubbo代码分析：NettyServerHandler创建连接的过程</p>
+<blockquote>
+<p>io.netty.channel.AbstractChannel.AbstractUnsafe.register(EventLoop, ChannelPromise)<br><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_000916.png"></p>
+</blockquote>
+<blockquote>
+<p>io.netty.channel.AbstractChannel.AbstractUnsafe.register0(ChannelPromise)<br><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_001215.png"></p>
+</blockquote>
+<blockquote>
+<p>org.apache.dubbo.remoting.transport.netty4.NettyServerHandler.channelActive(ChannelHandlerContext)<br><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_001738.png"></p>
+</blockquote>
+<blockquote>
+<p>org.apache.dubbo.remoting.transport.AbstractServer.connected(Channel)<br><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_002217.png"></p>
+</blockquote>
+<blockquote>
+<p>org.apache.dubbo.remoting.transport.netty4.NettyServer.getChannels()<br><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_002434.png"></p>
+</blockquote>
+<p>分析到NettyServer.getChannels这里，这段代码的大体逻辑很清晰，就是服务器（NettySeverHandler）在创建连接，在获取连接通道（getChannel）。<br>结合上述的线程信息、堆栈信息分析，我们于是提出一个疑点：为什么Dubbo会一直卡在建立连接的这一过程（这5条工作线程一直忙于或者卡在调用这一段代码），表现得像一个死循环，或者说，更像是一直不断在建立连接。<br>那么，排查思路被转到了：如何解答上述这个疑点?<br></br><br>我们反复通过若干的Arthas命令，前后来来回回反复排查约一天半，去定位上游不同的调用入口代码，试图从建立连接的上游找到突破口，去排查这个疑点，但基本没有头绪。<br>因为按正常逻辑，Dubbo只有在启动服务器时，与上下游建立连接（作为provider时与上游建立连接，作为consumer时则与下游建立连接），而这个连接是一个长连接，因为Dubbo协议默认使用单一长连接的方式来进行通信。<br></br><br>所谓单一长连接，就是指客户端与服务端之间只建立一个TCP连接，并保持长时间的有效性。在启动完成之后，长连接不会断开的，会一直保持。<br>所以按正常逻辑来理解，Dubbo不会自动断开连接再重新建立，也就是说不会出现上述这种“一直不断在建立连接”的类似“死循环”的现象。<br></br><br>又经过了一顿捣腾+观察，我们发现其实这一段并非死循环，而只是，只要持续有一个或两个请求进来，服务器的CPU就不会在短时间内降下来，就会出现CPU占高。或者，持续请求比较长时间，那么nety的任务队列里就会积累几十万的任务，我们通过arthas查看到netty的任务队列中存在着几十万个任务：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">vmtool--action getInstances --className io.netty.channel.nio.NioEventLoop --express‘instances.[#this.hashcode()+&quot;--&quot;+#this.taskQueue.size()&#125;&#x27; --limit 10000</span><br><span class="line">vmtool--action getInstances --className io.netty.channel.SingleThreadEventLoop --express‘instances.&#123;#this.hashcode(）+&quot;--&quot;+#this.taskQueue:size()&#125;&quot; --limit 10000</span><br></pre></td></tr></table></figure>
+</br>
+但只要此时不再有流量进来，nety的任务队列会慢慢减少，在一段长时间之后，CPU就会降下来。从而说明其实就并非死循环，也正是因为这一点，回过头来印证了当时线上的现场处理（禁止上游机器流量进入下游的问题机器）是正确且有效的。
+</br>
+</br>
+这一点，我们通过Dubbo服务治理页面上操作一个"禁用/启用"的功能，便可复现（这是Dubbo提供的一个动态操作，可以通过"禁用"按钮对当前接口禁止上游流量打入，而后可以再重新"启用"，恢复流量打入）：
+我们通过先禁用再启用服务，这样的操作便可以必现本次问题的现象：每次重新启用服务，服务器就会持续一段长时间飙高CPU占用率，期间表现得像一个“死循环”或者说是一个“巨大的循环”。
+</br>
+</br>
+而因为服务器实例节点的CPU被占用过多，导致调用链的监控日志无法正常上报至监控中心，所以此时我们的监控页面没有监控数据可以来辅助匹配验证此现象。
+</br>
+</br>
+最后我们通过Linux命令实时查询机器所占用的网络连接，统计Dubbo端口（默认20880）的占用总数来匹配现象以验证，此时发现了连接数量非常庞大：40万+，而对比兄弟项目的服务器的正常水平2千+，这个数字水平可以说是异常地高。
+
+<blockquote>
+<p><img src="/images/post-Dubbo-Conns-CPU-OOM/20240311_003116.png"></p>
+</blockquote>
+<p>回顾回来，既然验证了CPU真的并非耗在一直假想的“死循环”上，那么猜测应该是存在着类似于遍历或迭代大集合这样的耗时处理，而又联想到netty任务队列里有40万+个连接任务（对应着dubbo端口占用40万+个TCP连接），就很容易心生猜想：代码里是否有遍历任务队列的操作从而导致耗CPU呢？此时再反复review回去之前的堆栈里所指向的那些模块的代码，终于发现了耗CPU的地方：</p>
+<blockquote>
+<p><img src="/images/post-Dubbo-Conns-CPU-OOM/20240319_233710.png"></p>
+</blockquote>
+<p>那么为什么，连接数会如此之大呢？<br>对dubbo的服务提供者（provider）的单台机器而言，【连接数&#x3D;消费者实例数 × connections】，理解一下这里为何要乘以消费者实例数：是因为上游任何一个消费者consumer都可能跟提供者provider建立连接并产生调用。而在排查时，我们通过dubbo的动态配置页面上，查看到connections（连接池）配置成了300（如果不配置，默认值是1，也就是上文所述的默认上下游只建立1条长连接）。经过排查动态配置的操作记录，才得知，是较早之前团队里有开发同学手工误配成了300（他本人口述其实当时是想配置线程池&#x3D;300，但配成了连接池&#x3D;300）</p>
+<p>至此，终于排查思路得以明朗，根本原因是出现在下游Dubbo服务器与上游的连接数量上，再结合排查时浏览的一些GitHub帖子，梳理一下前因后果，如下：</p>
+<blockquote>
+<p>Dubbo的NettyServerWorker问题<br><a href="https://github.com/apache/dubbo/issues/10492">NettyServerWorker问题·Issue #10492</a><br><a href="https://github.com/apache/dubbo/issues/6902">dubbo HeaderExchangeChannel close method logic error· Issue #6902</a><br>代码分析<br><img src="/images/post-Dubbo-Conns-CPU-OOM/20240317_005242.png"><br><img src="/images/post-Dubbo-Conns-CPU-OOM/20240317_222132.png"><br><br/><br>问题原因总结</p>
+<p>该问题的根因在于，由于动态配置项connections配置不当（误配成了300），并且因为对dubbo服务提供者（provider）单机器而言，【连接数&#x3D;消费者实例数 × connections】，所以导致下游provider服务器的连接数太大。<br>而dubbo在重启（或者禁用后再启用）服务后，因为close()方法的bug导致禁用时没有实际关闭连接，并在重新启用后又再根据connections和消费者数量来决定建立大量的连接，由于服务器此时建立的连接的数量太多，最终导致netty的连接任务队列（channels集合）堆积严重，而在Dubbo内部的NettyServer中又存在着遍历channels的操作，因为遍历大集合比较耗CPU资源，所以CPU占用率就飙升，在持续一段时间后再叠加GC的操作，CPU耗费更严重，如此持续下来，内存占用率也疯涨，GC频繁但无效回收，最终也就导致了Out Of Memory，服务器最终崩溃。</p>
+</blockquote>
+<p>解决方案</p>
+<ol>
+<li>Dubbo动态配置页面上，删除connections配置，恢复默认连接数1</li>
+<li>升级dubbo组件版本至最新版本</li>
+</ol>
+<p>其中第1步操作后，效果立竿见影：</p>
+<blockquote>
+<p><img src="/images/post-Dubbo-Conns-CPU-OOM/20240317_005723.png"></p>
+</blockquote>
+<p>问题回顾<br>至此，回顾一下问题产生的背景，就不难理解了，此问题是在元旦时候临时扩容上游实例而得到触发、暴露，这是因为上游（consumer）做了扩容，导致上游的实例节点增加，而下游每个实例与上游建立的连接数量等于connections数值 × 上游实例数（即consumer数量），上游扩容一倍（节点数量相应增加了一倍），导致了下游（provider）的连接数扩大一倍，从而导致下游在重启（或禁用后重新启用）后，忙于处理连接任务队列里的channels集合的遍历，CPU一直占高，继而影响整体机器性能。</p>
+<h1 id="附录"><a href="#附录" class="headerlink" title="附录"></a>附录</h1><p><a href="/2024/03/19/Arthas-Commands/">一张图汇总Arthas命令大全</a></p>
+</section>
+    <!-- Tags START -->
+    
+      <div class="tags">
+        <span>Tags:</span>
+        
+  <a href="/tags#Arthas" >
+    <span class="tag-code">Arthas</span>
+  </a>
+
+  <a href="/tags#线上诊断" >
+    <span class="tag-code">线上诊断</span>
+  </a>
+
+  <a href="/tags#OutOfMemoryError" >
+    <span class="tag-code">OutOfMemoryError</span>
+  </a>
+
+  <a href="/tags#OOM" >
+    <span class="tag-code">OOM</span>
+  </a>
+
+  <a href="/tags#Dubbo" >
+    <span class="tag-code">Dubbo</span>
+  </a>
+
+  <a href="/tags#Connections" >
+    <span class="tag-code">Connections</span>
+  </a>
+
+  <a href="/tags#TCP连接" >
+    <span class="tag-code">TCP连接</span>
+  </a>
+
+  <a href="/tags#CPU飙升" >
+    <span class="tag-code">CPU飙升</span>
+  </a>
+
+  <a href="/tags#Netty" >
+    <span class="tag-code">Netty</span>
+  </a>
+
+  <a href="/tags#NettyServer" >
+    <span class="tag-code">NettyServer</span>
+  </a>
+
+  <a href="/tags#GC" >
+    <span class="tag-code">GC</span>
+  </a>
+
+      </div>
+    
+    <!-- Tags END -->
+    <!-- NAV START -->
+    
+  <div class="nav-container">
+    <!-- reverse left and right to put prev and next in a more logic postition -->
+    
+      <a class="nav-left" href="/2021/02/26/Aviator-Expression-Cache-OOM/">
+        <span class="nav-arrow">← </span>
+        
+          Google Aviator的表达式缓存膨胀问题
+        
+      </a>
+    
+    
+      <a class="nav-right" href="/2024/03/19/Arthas-Commands/">
+        
+          一张图汇总Arthas命令大全
+        
+        <span class="nav-arrow"> →</span>
+      </a>
+    
+  </div>
+
+    <!-- NAV END -->
+    <!-- 打赏 START -->
+    
+      <!--<div class="money-like">
+        <div class="reward-btn">
+          赏
+          <span class="money-code">
+            <span class="alipay-code">
+              <div class="code-image"></div>
+              <b>使用支付宝打赏</b>
+            </span>
+            <span class="wechat-code">
+              <div class="code-image"></div>
+              <b>使用微信打赏</b>
+            </span>
+          </span>
+        </div>
+        <p class="notice">若你觉得我的文章对你有帮助，欢迎点击上方按钮对我打赏</p>
+      </div>-->
+    
+    <!-- 打赏 END -->
+    <!-- 二维码 START -->
+    
+      <div class="qrcode">
+        <canvas id="share-qrcode"></canvas>
+        <p class="notice">扫描二维码，分享此文章</p>
+      </div>
+    
+    <!-- 二维码 END -->
+    
+      <!-- No Comment -->
+    
+  </article>
+  <!-- Article END -->
+  <!-- Catalog START -->
+  
+    <aside class="catalog-container">
+  <div class="toc-main">
+    <strong class="toc-title">Catalog</strong>
+    
+      <ol class="toc-nav"><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-nav-text">背景</span></a><ol class="toc-nav-child"><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#Dubbo%E6%9C%8D%E5%8A%A1%E4%B8%8A%E4%B8%8B%E6%B8%B8%E6%83%85%E5%86%B5"><span class="toc-nav-text">Dubbo服务上下游情况</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#%E9%97%AE%E9%A2%98%E6%9A%B4%E9%9C%B2"><span class="toc-nav-text">问题暴露</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#%E7%8E%B0%E5%9C%BA%E5%A4%84%E7%90%86"><span class="toc-nav-text">现场处理</span></a></li><li class="toc-nav-item toc-nav-level-2"><a class="toc-nav-link" href="#%E5%8E%9F%E5%9B%A0%E5%AE%9A%E4%BD%8D%E5%8F%8A%E5%88%86%E6%9E%90"><span class="toc-nav-text">原因定位及分析</span></a></li></ol></li><li class="toc-nav-item toc-nav-level-1"><a class="toc-nav-link" href="#%E9%99%84%E5%BD%95"><span class="toc-nav-text">附录</span></a></li></ol>
+    
+  </div>
+</aside>
+  
+  <!-- Catalog END -->
+</main>
+
+<script>
+  (function () {
+    var url = 'http://yoursite.com/2024/01/18/Dubbo-Connections-CPU-OOM/';
+    var banner = ''
+    if (banner !== '' && banner !== 'undefined' && banner !== 'null') {
+      $('#article-banner').css({
+        'background-image': 'url(' + banner + ')'
+      })
+    } else {
+      $('#article-banner').geopattern(url)
+    }
+    $('.header').removeClass('fixed-header')
+
+     // error image
+    $(".markdown-content img").on('error', function() {
+      $(this).attr('src', 'http://file.muyutech.com/error-img.png')
+      $(this).css({
+        'cursor': 'default'
+      })
+    })
+
+    // zoom image
+    $(".markdown-content img").on('click', function() {
+      var src = $(this).attr('src')
+      if (src !== 'http://file.muyutech.com/error-img.png') {
+        var imageW = $(this).width()
+        var imageH = $(this).height()
+        
+        var zoom = ($(window).width() * 0.95 / imageW).toFixed(2)
+        zoom = zoom < 1 ? 1 : zoom
+        zoom = zoom > 2 ? 2 : zoom
+        var transY = (($(window).height() - imageH) / 2).toFixed(2)
+
+        $('body').append('<div class="image-view-wrap"><div class="image-view-inner"><img src="'+ src +'" /></div></div>')
+        $('.image-view-wrap').addClass('wrap-active')
+        $('.image-view-wrap img').css({
+          'width': `${imageW}`,
+          'transform': `translate3d(0, ${transY}px, 0) scale3d(${zoom}, ${zoom}, 1)`
+        })
+        $('html').css('overflow', 'hidden')
+
+        $('.image-view-wrap').on('click', function() {
+          $(this).remove()
+          $('html').attr('style', '')
+        })
+      }
+    })
+
+    // qrcode
+    var qr = new QRious({
+      element: document.getElementById('share-qrcode'),
+      value: document.location.href
+    });
+
+    // gitment
+    var gitmentConfig = "fgu123";
+    if (gitmentConfig !== 'undefined') {
+      var gitment = new Gitment({
+        id: "Dubbo配置连接数过大导致CPU飙升、OOM",
+        owner: "fgu123",
+        repo: "fgu123.github.io",
+        oauth: {
+          client_id: "0f87e490e00ee3fd87ef",
+          client_secret: "4a9d2b148e7971c2201ad12131ce8bf8159ccd2e"
+        },
+        theme: {
+          render(state, instance) {
+            const container = document.createElement('div')
+            container.lang = "en-US"
+            container.className = 'gitment-container gitment-root-container'
+            container.appendChild(instance.renderHeader(state, instance))
+            container.appendChild(instance.renderEditor(state, instance))
+            container.appendChild(instance.renderComments(state, instance))
+            container.appendChild(instance.renderFooter(state, instance))
+            return container;
+          }
+        }
+      })
+      gitment.render(document.getElementById('comments'))
+    }
+  })();
+</script>
+
+<script>
+  var disqus_shortname = '';
+  
+  var disqus_url = 'http://yoursite.com/2024/01/18/Dubbo-Connections-CPU-OOM/';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//go.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
+    <div class="scroll-top">
+  <span class="arrow-icon"></span>
+</div>
+    <footer class="app-footer">
+  <p class="copyright">
+    &copy; 2024 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    <br>
+    Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
+  </p>
+</footer>
+
+<script>
+  function async(u, c) {
+    var d = document, t = 'script',
+      o = d.createElement(t),
+      s = d.getElementsByTagName(t)[0];
+    o.src = u;
+    if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+    s.parentNode.insertBefore(o, s);
+  }
+</script>
+<script>
+  async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+    FastClick.attach(document.body);
+  })
+</script>
+
+<script>
+  var hasLine = 'true';
+  async("//cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js", function(){
+    $('figure pre').each(function(i, block) {
+      var figure = $(this).parents('figure');
+      if (hasLine === 'false') {
+        figure.find('.gutter').hide();
+      }
+      var lang = figure.attr('class').split(' ')[1] || 'code';
+      var codeHtml = $(this).html();
+      var codeTag = document.createElement('code');
+      codeTag.className = lang;
+      codeTag.innerHTML = codeHtml;
+      $(this).attr('class', '').empty().html(codeTag);
+      figure.attr('data-lang', lang.toUpperCase());
+      hljs.highlightBlock(block);
+    });
+  })
+</script>
+<!-- Baidu Tongji -->
+
+
+<script src="/js/script.js"></script>
+
+  </body>
+</html>

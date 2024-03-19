@@ -16,13 +16,17 @@
   <link href="//cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.css" rel="stylesheet">
   <link href="//cdn.bootcss.com/highlight.js/9.12.0/styles/tomorrow.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+  
+<link rel="stylesheet" href="/css/style.css">
 <link rel="stylesheet" href="/css/plugins/gitment.css">
+
   <script src="//cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script>
   <script src="//cdn.bootcss.com/geopattern/1.2.3/js/geopattern.min.js"></script>
   <script src="//cdn.bootcss.com/nprogress/0.2.0/nprogress.min.js"></script>
-  <script src="/js/qrious.js"></script>
+  
+<script src="/js/qrious.js"></script>
 <script src="/js/gitment.js"></script>
+
   
   
     <!-- MathJax support START -->
@@ -49,7 +53,7 @@
   
 
 
-</head>
+<meta name="generator" content="Hexo 7.1.1"></head>
 <div class="wechat-share">
   <img src="/css/images/logo.png" />
 </div>
@@ -141,6 +145,40 @@
   
     <article class="article-card">
       <h2 class="article-head">
+        <a href="/2019/05/07/MySQL-Transaction-MVCC/">MySQL-Transaction-MVCC</a>
+      </h2>
+      <p class="article-date">May 7, 2019</p>
+      
+      <div class="article-summary">
+        
+          事务ACID事务的四大特性，Atomicity(原子性), Consistency(一致性), Isolation(隔离性), Durability(持久性)。
+A（原子性）一个事务的操作，要么全部执行，要么全部不执行。
+C（一致性）事务总是从一个一致的状态转换到另一个一致的状态。在事务开始 ...
+        
+      </div>
+      <a class="more" href="/2019/05/07/MySQL-Transaction-MVCC/">更多</a>
+    </article>
+  
+    <article class="article-card">
+      <h2 class="article-head">
+        <a href="/2019/04/22/AOP/">AOP</a>
+      </h2>
+      <p class="article-date">April 22, 2019</p>
+      
+      <div class="article-summary">
+        
+          整合总结，备忘…
+What’s AOPAspect Oriented Programming，面向切面编程。以 OOP 来对比理解：
+纵向关系 OOP，横向角度 AOP
+
+以 日志记录 为例，在没有AOP之前，如果需要在多个方法中进行日志记录，需要在每个方法中都重复编写同一段日志操作代码，哪 ...
+        
+      </div>
+      <a class="more" href="/2019/04/22/AOP/">更多</a>
+    </article>
+  
+    <article class="article-card">
+      <h2 class="article-head">
         <a href="/2019/04/20/LRUCache/">LRU Cache</a>
       </h2>
       <p class="article-date">April 20, 2019</p>
@@ -163,9 +201,11 @@ LinkedHashMap–现成的LRUJava中的LinkedHashM ...
       
       <div class="article-summary">
         
-          总结，备忘…
+          
+总结，备忘...
 
-What’s NettyNetty是一个 Java 开源框架，一个提供异步的、事件驱动的网络应用程序框架工具，作用是封装了JAVA NIO所支持的多路复用的I/O模型，还封装了Java BIO支持的步网络通信模型，对应用程序层面屏蔽网络底层的实现细节，让应用开发者快速开发高性 ...
+
+What’s NettyNetty是一个 Java 开源框架，一个提供异步的、事件驱动的网络应用程序框架工具，作用是封装了JAVA NIO所支持的多路复用的I&#x2F;O模型，还封装了Java BIO支持的步网络通信模型，对应用程序层面屏蔽网络底层的实现细节，让应用 ...
         
       </div>
       <a class="more" href="/2019/04/14/About-Netty/">更多</a>
@@ -194,7 +234,9 @@ What’s NettyNetty是一个 Java 开源框架，一个提供异步的、事件�
       <div class="article-summary">
         
           Spring事务传播机制Spring管理的事务是逻辑事务，而且物理事务和逻辑事务最大差别就在于事务传播行为，事务传播行为用于指定在多个事务方法间调用时，事务是如何在这些方法间传播的。
-下面以a.save()里调用了b.save()举例，事务方法之间调用时事务如何传播。123456789101 ...
+
+下面以a.save()里调用了b.save()举例，事务方法之间调用时事务如何传播。
+1234567891 ...
         
       </div>
       <a class="more" href="/2019/03/19/Spring-Transaction-Propagation/">更多</a>
@@ -286,7 +328,7 @@ What’s NettyNetty是一个 Java 开源框架，一个提供异步的、事件�
       
       <div class="article-summary">
         
-          Unix/Linux支持的5种I/O类型：
+          Unix&#x2F;Linux支持的5种I&#x2F;O类型：
 
 同步模型（synchronous IO） 
 阻塞IO（bloking IO）
@@ -294,8 +336,7 @@ What’s NettyNetty是一个 Java 开源框架，一个提供异步的、事件�
 多路复用IO（multiplexing IO）
 信号驱动式IO（signal-driven IO）
 
-
-异步IO（asyn ...
+ ...
         
       </div>
       <a class="more" href="/2018/11/20/Linux-IO-Types/">更多</a>
@@ -371,76 +412,6 @@ RocketMQ总体特点
       <a class="more" href="/2018/11/05/ThreadLocal-Summary/">更多</a>
     </article>
   
-    <article class="article-card">
-      <h2 class="article-head">
-        <a href="/2018/11/03/Volatile-Summary/">整理Volatile</a>
-      </h2>
-      <p class="article-date">November 3, 2018</p>
-      
-        
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
-  </a>
-
-  <a href="/tags#并发" >
-    <span class="tag-code">并发</span>
-  </a>
-
-  <a href="/tags#同步" >
-    <span class="tag-code">同步</span>
-  </a>
-
-  <a href="/tags#锁" >
-    <span class="tag-code">锁</span>
-  </a>
-
-  <a href="/tags#内存模型" >
-    <span class="tag-code">内存模型</span>
-  </a>
-
-      
-      <div class="article-summary">
-        
-          整理volatile相关，便于回顾记忆…
-Volatile简介volatile是轻量级的synchronized，它在多处理器开发中保证了共享变量的“可见性”，但不像synchronized一样保证原子性。可见性的意思是当一个线程修改一个共享变量时，另外一个线程能读到这个修改的值。如果vol ...
-        
-      </div>
-      <a class="more" href="/2018/11/03/Volatile-Summary/">更多</a>
-    </article>
-  
-    <article class="article-card">
-      <h2 class="article-head">
-        <a href="/2018/11/03/Synchronized-Summary/">整理Synchronized</a>
-      </h2>
-      <p class="article-date">November 3, 2018</p>
-      
-        
-  <a href="/tags#线程" >
-    <span class="tag-code">线程</span>
-  </a>
-
-  <a href="/tags#并发" >
-    <span class="tag-code">并发</span>
-  </a>
-
-  <a href="/tags#同步" >
-    <span class="tag-code">同步</span>
-  </a>
-
-  <a href="/tags#锁" >
-    <span class="tag-code">锁</span>
-  </a>
-
-      
-      <div class="article-summary">
-        
-          整理volatile相关，便于回顾记忆…
-Synchronized简介Synchronized一直是Java多线程并发编程中用作同步的元老级角色，很多人对它的概念都是一个重量级锁，但在JDK 1.6，对synchronized进行了各种优化，为了减少获得锁和释放锁带来的性能消耗而引入了偏向锁 ...
-        
-      </div>
-      <a class="more" href="/2018/11/03/Synchronized-Summary/">更多</a>
-    </article>
-  
 
   
     <div class="guide-pager">
@@ -460,7 +431,7 @@ Synchronized简介Synchronized一直是Java多线程并发编程中用作同步�
 </div>
     <footer class="app-footer">
   <p class="copyright">
-    &copy; 2023 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+    &copy; 2024 | Proudly powered by <a href="https://hexo.io" target="_blank">Hexo</a>
     <br>
     Theme by <a href="https://github.com/yanm1ng">yanm1ng</a>
   </p>
@@ -503,6 +474,8 @@ Synchronized简介Synchronized一直是Java多线程并发编程中用作同步�
 </script>
 <!-- Baidu Tongji -->
 
+
 <script src="/js/script.js"></script>
+
   </body>
 </html>
